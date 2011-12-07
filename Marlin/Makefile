@@ -1,9 +1,7 @@
 TARGET = $(notdir $(CURDIR))
 # CHANGE BELOW:
-#~ INSTALL_DIR = /Applications/Arduino.app/Contents/Resources/Java
-INSTALL_DIR = /home/bkubicek/software/arduino-0022
-#~ PORT = /dev/cu.usbserial*
-PORT = /dev/ttyACM0
+INSTALL_DIR = /Applications/Arduino.app/Contents/Resources/Java/
+PORT = /dev/tty.usbmodem3a21
 
 # Get these values from:
 #     $(INSTALL_DIR)/hardware/boards.txt
@@ -13,8 +11,8 @@ PORT = /dev/ttyACM0
 UPLOAD_SPEED = 115200
 UPLOAD_PROTOCOL = stk500v2
 BUILD_MCU = atmega2560
-BUILD_F_CPU = 16000000L
-TERM=bash
+BUILD_F_CPU = 16000000
+#TERM=bash
 
 # getting undefined reference to `__cxa_pure_virtual'
 #~ [http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1254180518 Arduino Forum - Makefile]
@@ -31,7 +29,7 @@ ARDUINO = $(INSTALL_DIR)/hardware/arduino/cores/arduino
 #~ AVR_TOOLS_PATH = $(INSTALL_DIR)/hardware/tools/avr/bin
 # in Ubuntu, avr-gcc is installed separate;
 # only avrdude comes with the IDE
-AVR_TOOLS_PATH = /usr/bin
+AVR_TOOLS_PATH =/usr/local/CrossPack-AVR/bin
 AVR_DUDE_PATH = $(INSTALL_DIR)/hardware/tools
 #
 SRC = $(ARDUINO)/pins_arduino.c $(ARDUINO)/wiring.c \

@@ -738,7 +738,7 @@ inline void process_commands()
           /* continue to loop until we have reached the target temp   
             _and_ until TEMP_RESIDENCY_TIME hasn't passed since we reached it */
           while((target_direction ? (isHeatingHotend0()) : (isCoolingHotend0()) ||
-                  (residencyStart > -1 && (millis() - residencyStart) < TEMP_RESIDENCY_TIME*1000) ) {
+                  (residencyStart > -1 && (millis() - residencyStart) < TEMP_RESIDENCY_TIME*1000) ) ) {
         #else
           while ( target_direction ? (isHeatingHotend0()) : (isCoolingHotend0()) ) {
         #endif //TEMP_RESIDENCY_TIME

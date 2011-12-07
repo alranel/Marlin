@@ -274,8 +274,8 @@
 #define Y_STEP_PIN         38
 #define Y_DIR_PIN          40
 #define Y_ENABLE_PIN       36
-#define Y_MIN_PIN          16
-#define Y_MAX_PIN          -1    //17
+#define Y_MIN_PIN          -1    //16
+#define Y_MAX_PIN          17    //
 
 #define Z_STEP_PIN         44
 #define Z_DIR_PIN          46
@@ -301,8 +301,8 @@
   #define FAN_PIN          11    // RAMPS 1.0
 
 #else // RAMPS_V_1_1 or RAMPS_V_1_2
-  #define HEATER_0_PIN     10    // RAMPS 1.1
-  #define HEATER_1_PIN      8    // RAMPS 1.1
+  #define HEATER_0_PIN     8    // RAMPS 1.1
+  #define HEATER_1_PIN     10    // RAMPS 1.1
   #define FAN_PIN           9    // RAMPS 1.1
 #endif
 #define HEATER_2_PIN        -1

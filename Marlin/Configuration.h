@@ -1,6 +1,13 @@
 #ifndef __CONFIGURATION_H
 #define __CONFIGURATION_H
 
+/* MY OPTIONS ------- */
+#define XY_MICROSTEP_SETTING 8
+#define Z_MICROSTEP_SETTING 8
+#define E_MICROSTEP_SETTING 8
+#define Z_STEPS 320 // M8
+/* ------------------ */
+
 
 
 // This determines the communication speed of the printer
@@ -31,7 +38,7 @@
 // Sanguinololu 1.2 and above = 62
 // Ultimaker = 7,
 // Teensylu = 8
-#define MOTHERBOARD 7
+#define MOTHERBOARD 3
 
 //===========================================================================
 //=============================Thermal Settings  ============================
@@ -45,17 +52,17 @@
 // 5 is ParCan supplied 104GT-2 100K
 // 6 is EPCOS 100k
 // 7 is 100k Honeywell thermistor 135-104LAG-J01
-//#define THERMISTORHEATER_0 3
+#define THERMISTORHEATER_0 1
 //#define THERMISTORHEATER_1 3
-//#define THERMISTORBED 3
+#define THERMISTORBED 6
 
-//#define HEATER_0_USES_THERMISTOR
+#define HEATER_0_USES_THERMISTOR
 //#define HEATER_1_USES_THERMISTOR
-#define HEATER_0_USES_AD595
+//#define HEATER_0_USES_AD595
 //#define HEATER_1_USES_AD595
 
 // Select one of these only to define how the bed temp is read.
-//#define BED_USES_THERMISTOR
+#define BED_USES_THERMISTOR
 //#define BED_USES_AD595
 
 #define BED_CHECK_INTERVAL 5000 //ms
@@ -67,13 +74,13 @@
 //#define WATCHPERIOD 5000 //5 seconds
 
 // Actual temperature must be close to target for this long before M109 returns success
-//#define TEMP_RESIDENCY_TIME 20  // (seconds)
-//#define TEMP_HYSTERESIS 5       // (C°) range of +/- temperatures considered "close" to the target one
+#define TEMP_RESIDENCY_TIME 20  // (seconds)
+#define TEMP_HYSTERESIS 5       // (C°) range of +/- temperatures considered "close" to the target one
 
 //// The minimal temperature defines the temperature below which the heater will not be enabled
 #define HEATER_0_MINTEMP 5
 //#define HEATER_1_MINTEMP 5
-//#define BED_MINTEMP 5
+#define BED_MINTEMP 5
 
 
 // When temperature exceeds max temp, your heater will be switched off.
@@ -81,7 +88,7 @@
 // You should use MINTEMP for thermistor short/failure protection.
 #define HEATER_0_MAXTEMP 275
 //#define HEATER_1_MAXTEMP 275
-//#define BED_MAXTEMP 150
+#define BED_MAXTEMP 150
 
 
 
@@ -181,26 +188,26 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 //#define INVERT_Z_DIR false    // for Mendel set to false, for Orca set to true
 //#define INVERT_E_DIR true   // for direct drive extruder v9 set to true, for geared extruder set to false
 
-#define INVERT_X_DIR true     // for Mendel set to false, for Orca set to true
-#define INVERT_Y_DIR false    // for Mendel set to true, for Orca set to false
+#define INVERT_X_DIR false     // for Mendel set to false, for Orca set to true
+#define INVERT_Y_DIR true    // for Mendel set to true, for Orca set to false
 #define INVERT_Z_DIR true     // for Mendel set to false, for Orca set to true
 #define INVERT_E_DIR false    // for direct drive extruder v9 set to true, for geared extruder set to false
 
 //// ENDSTOP SETTINGS:
 // Sets direction of endstops when homing; 1=MAX, -1=MIN
 #define X_HOME_DIR -1
-#define Y_HOME_DIR -1
+#define Y_HOME_DIR 1
 #define Z_HOME_DIR -1
 
 #define min_software_endstops false //If true, axis won't move to coordinates less than zero.
-#define max_software_endstops false  //If true, axis won't move to coordinates greater than the defined lengths below.
-#define X_MAX_LENGTH 210
-#define Y_MAX_LENGTH 210
-#define Z_MAX_LENGTH 210
+#define max_software_endstops true  //If true, axis won't move to coordinates greater than the defined lengths below.
+#define X_MAX_LENGTH 174
+#define Y_MAX_LENGTH 200
+#define Z_MAX_LENGTH 185
 
 //// MOVEMENT SETTINGS
 #define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E
-#define HOMING_FEEDRATE {50*60, 50*60, 4*60, 0}  // set the homing speeds (mm/min)
+#define HOMING_FEEDRATE {1500,1500,180}  // set the homing speeds (mm/min)
 
 #define AXIS_RELATIVE_MODES {false, false, false, false}
 
@@ -208,8 +215,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 
 // default settings 
 
-#define DEFAULT_AXIS_STEPS_PER_UNIT   {78.7402,78.7402,200*8/3,760*1.1}                    // default steps per unit for ultimaker 
-//#define DEFAULT_AXIS_STEPS_PER_UNIT   {40, 40, 3333.92, 67} //sells mendel with v9 extruder
+#define DEFAULT_AXIS_STEPS_PER_UNIT   {10*XY_MICROSTEP_SETTING/2, 10*XY_MICROSTEP_SETTING/2, Z_STEPS*Z_MICROSTEP_SETTING/2, 75*E_MICROSTEP_SETTING/2}
 #define DEFAULT_MAX_FEEDRATE          {500, 500, 5, 200000}    // (mm/sec)    
 #define DEFAULT_MAX_ACCELERATION      {9000,9000,100,10000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for skeinforge 40+, for older versions raise them a lot.
 
@@ -240,7 +246,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define EEPROM_SETTINGS
 //to disable EEPROM Serial responses and decrease program space by ~1700 byte: comment this out:
 // please keep turned on if you can.
-#define EEPROM_CHITCHAT
+//#define EEPROM_CHITCHAT
 
 
 // The hardware watchdog should halt the Microcontroller, in case the firmware gets stuck somewhere. However:
