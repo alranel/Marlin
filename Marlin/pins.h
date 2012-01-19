@@ -47,9 +47,9 @@
 #define Z_MIN_PIN          17
 #define Z_MAX_PIN          16
 
-#define E_STEP_PIN         11
-#define E_DIR_PIN          12
-#define E_ENABLE_PIN       -1
+#define E0_STEP_PIN         11
+#define E0_DIR_PIN          12
+#define E0_ENABLE_PIN       -1
 
 #define SDPOWER          -1
 #define SDSS          -1
@@ -120,9 +120,9 @@
 #define Z_MIN_PIN           2
 #define Z_MAX_PIN           1
 
-#define E_STEP_PIN         12
-#define E_DIR_PIN          16
-#define E_ENABLE_PIN        3
+#define E0_STEP_PIN         12
+#define E0_DIR_PIN          16
+#define E0_ENABLE_PIN        3
 
 #define SDPOWER          -1
 #define SDSS          -1
@@ -171,9 +171,9 @@
 #define Z_MIN_PIN       30
 #define Z_MAX_PIN       31
 
-#define E_STEP_PIN      17
-#define E_DIR_PIN       16
-#define E_ENABLE_PIN    -1
+#define E0_STEP_PIN      17
+#define E0_DIR_PIN       16
+#define E0_ENABLE_PIN    -1
 
 #define SDPOWER          -1
 #define SDSS          4
@@ -244,9 +244,9 @@
 #define Z_MIN_PIN          18
 #define Z_MAX_PIN          -1   //19
 
-#define E_STEP_PIN         26
-#define E_DIR_PIN          28
-#define E_ENABLE_PIN       24
+#define E0_STEP_PIN         26
+#define E0_DIR_PIN          28
+#define E0_ENABLE_PIN       24
 
 #define SDPOWER            -1
 #define SDSS               53
@@ -283,9 +283,9 @@
 #define Z_MIN_PIN          18
 #define Z_MAX_PIN          -1    //19
 
-#define E_STEP_PIN         32
-#define E_DIR_PIN          34
-#define E_ENABLE_PIN       30
+#define E0_STEP_PIN         32
+#define E0_DIR_PIN          34
+#define E0_ENABLE_PIN       30
 
 #define SDPOWER            48
 #define SDSS               53
@@ -302,13 +302,15 @@
 
 #else // RAMPS_V_1_1 or RAMPS_V_1_2
   #define HEATER_0_PIN     8    // RAMPS 1.1
-  #define HEATER_1_PIN     10    // RAMPS 1.1
+  #define HEATER_1_PIN     -1    // RAMPS 1.1
+  #define HEATER_BED_PIN     10    // RAMPS 1.1
   #define FAN_PIN           9    // RAMPS 1.1
 #endif
 #define HEATER_2_PIN        -1
 #define TEMP_0_PIN          2    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
-#define TEMP_1_PIN          1    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
+#define TEMP_1_PIN          -1    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
 #define TEMP_2_PIN          -1    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
+#define TEMP_BED_PIN         1    // MUST USE ANALOG INPUT NUMBERING NOT DIGITAL OUTPUT NUMBERING!!!!!!!!!
 #endif
 
 // SPI for Max6675 Thermocouple 
@@ -353,9 +355,9 @@
 #define Z_MIN_PIN           4
 #define Z_MAX_PIN          -1
 
-#define E_STEP_PIN         11
-#define E_DIR_PIN          12
-#define E_ENABLE_PIN       -1
+#define E0_STEP_PIN         11
+#define E0_DIR_PIN          12
+#define E0_ENABLE_PIN       -1
 
 #define SDPOWER          -1
 #define SDSS          -1
@@ -404,9 +406,9 @@
     #define Z_MAX_PIN       -1
     
     //extruder pins
-    #define E_STEP_PIN      4     //Edited @ EJE Electronics 20100715
-    #define E_DIR_PIN       2     //Edited @ EJE Electronics 20100715
-    #define E_ENABLE_PIN    3     //Added @ EJE Electronics 20100715
+    #define E0_STEP_PIN      4     //Edited @ EJE Electronics 20100715
+    #define E0_DIR_PIN       2     //Edited @ EJE Electronics 20100715
+    #define E0_ENABLE_PIN    3     //Added @ EJE Electronics 20100715
     #define TEMP_0_PIN      5     //changed @ rkoeppl 20110410
     #define HEATER_0_PIN    14    //changed @ rkoeppl 20110410
     #define HEATER_1_PIN    -1    //changed @ rkoeppl 20110410
@@ -458,8 +460,8 @@
 #define Z_MIN_PIN          20
 #define Z_MAX_PIN          -1
 
-#define E_STEP_PIN         1
-#define E_DIR_PIN          0
+#define E0_STEP_PIN         1
+#define E0_DIR_PIN          0
 
 #define LED_PIN            -1
 
@@ -476,7 +478,7 @@
 #define X_ENABLE_PIN       14
 #define Y_ENABLE_PIN       14
 #define Z_ENABLE_PIN       26
-#define E_ENABLE_PIN       14
+#define E0_ENABLE_PIN       14
 
 #else
 
@@ -484,7 +486,7 @@
 #define X_ENABLE_PIN       -1
 #define Y_ENABLE_PIN       -1
 #define Z_ENABLE_PIN       -1
-#define E_ENABLE_PIN       -1
+#define E0_ENABLE_PIN       -1
 
 #endif
 
@@ -547,9 +549,9 @@
 
 
 
-#define E_STEP_PIN         EXTRUDER_0_STEP_PIN
-#define E_DIR_PIN          EXTRUDER_0_DIR_PIN
-#define E_ENABLE_PIN       EXTRUDER_0_ENABLE_PIN
+#define E0_STEP_PIN         EXTRUDER_0_STEP_PIN
+#define E0_DIR_PIN          EXTRUDER_0_DIR_PIN
+#define E0_ENABLE_PIN       EXTRUDER_0_ENABLE_PIN
 
 #define SDPOWER            -1
 #define SDSS               53
@@ -654,9 +656,9 @@
 #define Z_MIN_PIN          15 
 #define Z_MAX_PIN          -1    
 
-#define E_STEP_PIN          6  
-#define E_DIR_PIN           7 
-#define E_ENABLE_PIN       19 
+#define E0_STEP_PIN          6  
+#define E0_DIR_PIN           7 
+#define E0_ENABLE_PIN       19 
 
 
 
@@ -689,6 +691,6 @@
 #endif
 
 //List of pins which to ignore when asked to change by gcode, 0 and 1 are RX and TX, do not mess with those!
-#define SENSITIVE_PINS {0, 1, X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, X_MIN_PIN, X_MAX_PIN, Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, Y_MIN_PIN, Y_MAX_PIN, Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, Z_MIN_PIN, Z_MAX_PIN, E_STEP_PIN, E_DIR_PIN, E_ENABLE_PIN, LED_PIN, PS_ON_PIN, HEATER_0_PIN, HEATER_1_PIN, HEATER_2_PIN, FAN_PIN, TEMP_0_PIN, TEMP_1_PIN, TEMP_2_PIN}
+#define SENSITIVE_PINS {0, 1, X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, X_MIN_PIN, X_MAX_PIN, Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, Y_MIN_PIN, Y_MAX_PIN, Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, Z_MIN_PIN, Z_MAX_PIN, E0_STEP_PIN, E0_DIR_PIN, E0_ENABLE_PIN, LED_PIN, PS_ON_PIN, HEATER_0_PIN, HEATER_1_PIN, HEATER_2_PIN, FAN_PIN, TEMP_0_PIN, TEMP_1_PIN, TEMP_2_PIN}
 
 #endif
