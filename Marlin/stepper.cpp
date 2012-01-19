@@ -21,12 +21,12 @@
 /* The timer calculations of this module informed by the 'RepRap cartesian firmware' by Zack Smith
    and Philipp Tiefenbacher. */
 
-#include "stepper.h"
-#include "Configuration.h"
+
+
+
 #include "Marlin.h"
+#include "stepper.h"
 #include "planner.h"
-#include "pins.h"
-#include "fastio.h"
 #include "temperature.h"
 #include "ultralcd.h"
 
@@ -40,7 +40,6 @@
 block_t *current_block;  // A pointer to the block currently being traced
 
 
-
 //===========================================================================
 //=============================private variables ============================
 //===========================================================================
@@ -52,17 +51,18 @@ static long counter_x,       // Counter variables for the bresenham line tracer
             counter_y, 
             counter_z,       
             counter_e;
-static unsigned long step_events_completed; // The number of step events executed in the current block
+volatile static unsigned long step_events_completed; // The number of step events executed in the current block
 #ifdef ADVANCE
   static long advance_rate, advance, final_advance = 0;
-  static short old_advance = 0;
+  static long old_advance = 0;
 #endif
-static short e_steps;
+static long e_steps[3];
 static unsigned char busy = false; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 static long acceleration_time, deceleration_time;
 //static unsigned long accelerate_until, decelerate_after, acceleration_rate, initial_rate, final_rate, nominal_rate;
 static unsigned short acc_step_rate; // needed for deccelaration start point
 static char step_loops;
+static unsigned short OCR1A_nominal;
 
 volatile long endstops_trigsteps[3]={0,0,0};
 volatile long endstops_stepsTotal,endstops_stepsDone;
@@ -77,9 +77,7 @@ static bool old_y_max_endstop=false;
 static bool old_z_min_endstop=false;
 static bool old_z_max_endstop=false;
 
-static bool bussy_error=false;
-unsigned short OCR1A_error=12345;
-unsigned short OCR1A_nominal;
+static bool check_endstops = true;
 
 volatile long count_position[NUM_AXIS] = { 0, 0, 0, 0};
 volatile char count_direction[NUM_AXIS] = { 1, 1, 1, 1};
@@ -87,7 +85,12 @@ volatile char count_direction[NUM_AXIS] = { 1, 1, 1, 1};
 //===========================================================================
 //=============================functions         ============================
 //===========================================================================
-  
+
+#ifdef ENDSTOPS_ONLY_FOR_HOMING
+  #define CHECK_ENDSTOPS  if(check_endstops)
+#else
+  #define CHECK_ENDSTOPS
+#endif
 
 // intRes = intIn1 * intIn2 >> 16
 // uses:
@@ -164,15 +167,6 @@ asm volatile ( \
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
 #define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
 
-void checkStepperErrors()
-{
-  if(bussy_error) {
-    SERIAL_ERROR_START
-    SERIAL_ERROR(OCR1A_error);
-    SERIAL_ERRORLNPGM(" ISR overtaking itself.");
-    bussy_error = false;
-  }
-}
 
 void checkHitEndstops()
 {
@@ -202,6 +196,11 @@ void endstops_hit_on_purpose()
   endstop_z_hit=false;
 }
 
+void enable_endstops(bool check)
+{
+  check_endstops = check;
+}
+
 //         __________________________
 //        /|                        |\     _________________         ^
 //       / |                        | \   /|               |\        |
@@ -224,7 +223,7 @@ void st_wake_up() {
   ENABLE_STEPPER_DRIVER_INTERRUPT();  
 }
 
-inline unsigned short calc_timer(unsigned short step_rate) {
+FORCE_INLINE unsigned short calc_timer(unsigned short step_rate) {
   unsigned short timer;
   if(step_rate > MAX_STEP_FREQUENCY) step_rate = MAX_STEP_FREQUENCY;
   
@@ -255,16 +254,19 @@ inline unsigned short calc_timer(unsigned short step_rate) {
     timer = (unsigned short)pgm_read_word_near(table_address);
     timer -= (((unsigned short)pgm_read_word_near(table_address+2) * (unsigned char)(step_rate & 0x0007))>>3);
   }
-  if(timer < 100) { timer = 100; Serial.print("Steprate to high : "); Serial.println(step_rate); }//(20kHz this should never happen)
+  if(timer < 100) { timer = 100; MSerial.print("Steprate to high : "); MSerial.println(step_rate); }//(20kHz this should never happen)
   return timer;
 }
 
 // Initializes the trapezoid generator from the current block. Called whenever a new 
 // block begins.
-inline void trapezoid_generator_reset() {
+FORCE_INLINE void trapezoid_generator_reset() {
   #ifdef ADVANCE
     advance = current_block->initial_advance;
     final_advance = current_block->final_advance;
+    // Do E steps + advance steps
+    e_steps[current_block->active_extruder] += ((advance >>8) - old_advance);
+    old_advance = advance >>8;  
   #endif
   deceleration_time = 0;
   // step_rate to timer interval
@@ -272,22 +274,23 @@ inline void trapezoid_generator_reset() {
   acceleration_time = calc_timer(acc_step_rate);
   OCR1A = acceleration_time;
   OCR1A_nominal = calc_timer(current_block->nominal_rate);
+  
+//    SERIAL_ECHO_START;
+//    SERIAL_ECHOPGM("advance :");
+//    SERIAL_ECHO(current_block->advance/256.0);
+//    SERIAL_ECHOPGM("advance rate :");
+//    SERIAL_ECHO(current_block->advance_rate/256.0);
+//    SERIAL_ECHOPGM("initial advance :");
+//  SERIAL_ECHO(current_block->initial_advance/256.0);
+//    SERIAL_ECHOPGM("final advance :");
+//    SERIAL_ECHOLN(current_block->final_advance/256.0);
+    
 }
 
 // "The Stepper Driver Interrupt" - This timer interrupt is the workhorse.  
 // It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately. 
 ISR(TIMER1_COMPA_vect)
-{        
-  if(busy){ 
-    OCR1A_error = OCR1A;
-    bussy_error = true;
-    OCR1A = 0x30000;
-    return; 
-  } // The busy-flag is used to avoid reentering this interrupt
-
-  busy = true;
-  sei(); // Re enable interrupts (normally disabled while inside an interrupt handler)
-
+{    
   // If there is no current block, attempt to pop one from the buffer
   if (current_block == NULL) {
     // Anything in the buffer?
@@ -299,12 +302,12 @@ ISR(TIMER1_COMPA_vect)
       counter_z = counter_x;
       counter_e = counter_x;
       step_events_completed = 0;
- //     #ifdef ADVANCE
-      e_steps = 0;
+//      #ifdef ADVANCE
+//      e_steps[current_block->active_extruder] = 0;
 //      #endif
     } 
     else {
-//      DISABLE_STEPPER_DRIVER_INTERRUPT();
+        OCR1A=2000; // 1kHz.
     }    
   } 
 
@@ -316,120 +319,131 @@ ISR(TIMER1_COMPA_vect)
     if ((out_bits & (1<<X_AXIS)) != 0) {   // -direction
       WRITE(X_DIR_PIN, INVERT_X_DIR);
       count_direction[X_AXIS]=-1;
-      #if X_MIN_PIN > -1
-        bool x_min_endstop=(READ(X_MIN_PIN) != X_ENDSTOPS_INVERTING);
-        if(x_min_endstop && old_x_min_endstop && (current_block->steps_x > 0)) {
-          endstops_trigsteps[X_AXIS] = count_position[X_AXIS];
-          endstop_x_hit=true;
-          step_events_completed = current_block->step_event_count;
-        }
-        old_x_min_endstop = x_min_endstop;
-      #endif
+      CHECK_ENDSTOPS
+      {
+        #if X_MIN_PIN > -1
+          bool x_min_endstop=(READ(X_MIN_PIN) != X_ENDSTOPS_INVERTING);
+          if(x_min_endstop && old_x_min_endstop && (current_block->steps_x > 0)) {
+            endstops_trigsteps[X_AXIS] = count_position[X_AXIS];
+            endstop_x_hit=true;
+            step_events_completed = current_block->step_event_count;
+          }
+          old_x_min_endstop = x_min_endstop;
+        #endif
+      }
     }
     else { // +direction 
       WRITE(X_DIR_PIN,!INVERT_X_DIR);
       count_direction[X_AXIS]=1;
-      #if X_MAX_PIN > -1
-        bool x_max_endstop=(READ(X_MAX_PIN) != X_ENDSTOPS_INVERTING);
-        if(x_max_endstop && old_x_max_endstop && (current_block->steps_x > 0)){
-          endstops_trigsteps[X_AXIS] = count_position[X_AXIS];
-          endstop_x_hit=true;
-          step_events_completed = current_block->step_event_count;
-        }
-        old_x_max_endstop = x_max_endstop;
-      #endif
+      CHECK_ENDSTOPS 
+      {
+        #if X_MAX_PIN > -1
+          bool x_max_endstop=(READ(X_MAX_PIN) != X_ENDSTOPS_INVERTING);
+          if(x_max_endstop && old_x_max_endstop && (current_block->steps_x > 0)){
+            endstops_trigsteps[X_AXIS] = count_position[X_AXIS];
+            endstop_x_hit=true;
+            step_events_completed = current_block->step_event_count;
+          }
+          old_x_max_endstop = x_max_endstop;
+        #endif
+      }
     }
 
     if ((out_bits & (1<<Y_AXIS)) != 0) {   // -direction
       WRITE(Y_DIR_PIN,INVERT_Y_DIR);
       count_direction[Y_AXIS]=-1;
-      #if Y_MIN_PIN > -1
-        bool y_min_endstop=(READ(Y_MIN_PIN) != Y_ENDSTOPS_INVERTING);
-        if(y_min_endstop && old_y_min_endstop && (current_block->steps_y > 0)) {
-          endstops_trigsteps[Y_AXIS] = count_position[Y_AXIS];
-          endstop_y_hit=true;
-          step_events_completed = current_block->step_event_count;
-        }
-        old_y_min_endstop = y_min_endstop;
-      #endif
+      CHECK_ENDSTOPS
+      {
+        #if Y_MIN_PIN > -1
+          bool y_min_endstop=(READ(Y_MIN_PIN) != Y_ENDSTOPS_INVERTING);
+          if(y_min_endstop && old_y_min_endstop && (current_block->steps_y > 0)) {
+            endstops_trigsteps[Y_AXIS] = count_position[Y_AXIS];
+            endstop_y_hit=true;
+            step_events_completed = current_block->step_event_count;
+          }
+          old_y_min_endstop = y_min_endstop;
+        #endif
+      }
     }
     else { // +direction
     WRITE(Y_DIR_PIN,!INVERT_Y_DIR);
       count_direction[Y_AXIS]=1;
-      #if Y_MAX_PIN > -1
-        bool y_max_endstop=(READ(Y_MAX_PIN) != Y_ENDSTOPS_INVERTING);
-        if(y_max_endstop && old_y_max_endstop && (current_block->steps_y > 0)){
-          endstops_trigsteps[Y_AXIS] = count_position[Y_AXIS];
-          endstop_y_hit=true;
-          step_events_completed = current_block->step_event_count;
-        }
-        old_y_max_endstop = y_max_endstop;
-      #endif
+      CHECK_ENDSTOPS
+      {
+        #if Y_MAX_PIN > -1
+          bool y_max_endstop=(READ(Y_MAX_PIN) != Y_ENDSTOPS_INVERTING);
+          if(y_max_endstop && old_y_max_endstop && (current_block->steps_y > 0)){
+            endstops_trigsteps[Y_AXIS] = count_position[Y_AXIS];
+            endstop_y_hit=true;
+            step_events_completed = current_block->step_event_count;
+          }
+          old_y_max_endstop = y_max_endstop;
+        #endif
+      }
     }
 
     if ((out_bits & (1<<Z_AXIS)) != 0) {   // -direction
       WRITE(Z_DIR_PIN,INVERT_Z_DIR);
       count_direction[Z_AXIS]=-1;
-      #if Z_MIN_PIN > -1
-        bool z_min_endstop=(READ(Z_MIN_PIN) != Z_ENDSTOPS_INVERTING);
-        if(z_min_endstop && old_z_min_endstop && (current_block->steps_z > 0)) {
-          endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
-          endstop_z_hit=true;
-          step_events_completed = current_block->step_event_count;
-        }
-        old_z_min_endstop = z_min_endstop;
-      #endif
+      CHECK_ENDSTOPS
+      {
+        #if Z_MIN_PIN > -1
+          bool z_min_endstop=(READ(Z_MIN_PIN) != Z_ENDSTOPS_INVERTING);
+          if(z_min_endstop && old_z_min_endstop && (current_block->steps_z > 0)) {
+            endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
+            endstop_z_hit=true;
+            step_events_completed = current_block->step_event_count;
+          }
+          old_z_min_endstop = z_min_endstop;
+        #endif
+      }
     }
     else { // +direction
       WRITE(Z_DIR_PIN,!INVERT_Z_DIR);
-        count_direction[Z_AXIS]=1;
-      #if Z_MAX_PIN > -1
-        bool z_max_endstop=(READ(Z_MAX_PIN) != Z_ENDSTOPS_INVERTING);
-        if(z_max_endstop && old_z_max_endstop && (current_block->steps_z > 0)) {
-          endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
-          endstop_z_hit=true;
-          step_events_completed = current_block->step_event_count;
-        }
-        old_z_max_endstop = z_max_endstop;
-      #endif
+      count_direction[Z_AXIS]=1;
+      CHECK_ENDSTOPS
+      {
+        #if Z_MAX_PIN > -1
+          bool z_max_endstop=(READ(Z_MAX_PIN) != Z_ENDSTOPS_INVERTING);
+          if(z_max_endstop && old_z_max_endstop && (current_block->steps_z > 0)) {
+            endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
+            endstop_z_hit=true;
+            step_events_completed = current_block->step_event_count;
+          }
+          old_z_max_endstop = z_max_endstop;
+        #endif
+      }
     }
 
     #ifndef ADVANCE
       if ((out_bits & (1<<E_AXIS)) != 0) {  // -direction
-        WRITE(E_DIR_PIN,INVERT_E_DIR);
+        REV_E_DIR();
         count_direction[E_AXIS]=-1;
       }
       else { // +direction
-        WRITE(E_DIR_PIN,!INVERT_E_DIR);
+        NORM_E_DIR();
         count_direction[E_AXIS]=-1;
       }
     #endif //!ADVANCE
+    
 
+    
     for(int8_t i=0; i < step_loops; i++) { // Take multiple steps per interrupt (For high speed moves) 
-    /*
+      MSerial.checkRx(); // Check for serial chars. 
+      
+      #ifdef ADVANCE
       counter_e += current_block->steps_e;
       if (counter_e > 0) {
         counter_e -= current_block->step_event_count;
         if ((out_bits & (1<<E_AXIS)) != 0) { // - direction
-          CRITICAL_SECTION_START;
-          e_steps--;
-          CRITICAL_SECTION_END;
+          e_steps[current_block->active_extruder]--;
         }
         else {
-          CRITICAL_SECTION_START;
-          e_steps++;
-          CRITICAL_SECTION_END;
+          e_steps[current_block->active_extruder]++;
         }
       }    
-      */
-      /*
-      // Do E steps + advance steps
-      CRITICAL_SECTION_START;
-      e_steps += ((advance >> 16) - old_advance);
-      CRITICAL_SECTION_END;
-      old_advance = advance >> 16;  
-      */
-        
+      #endif //ADVANCE
+      
       counter_x += current_block->steps_x;
       if (counter_x > 0) {
         WRITE(X_STEP_PIN, HIGH);
@@ -457,9 +471,9 @@ ISR(TIMER1_COMPA_vect)
       #ifndef ADVANCE
         counter_e += current_block->steps_e;
         if (counter_e > 0) {
-          WRITE(E_STEP_PIN, HIGH);
+          WRITE_E_STEP(HIGH);
           counter_e -= current_block->step_event_count;
-          WRITE(E_STEP_PIN, LOW);
+          WRITE_E_STEP(LOW);
           count_position[E_AXIS]+=count_direction[E_AXIS];
         }
       #endif //!ADVANCE
@@ -469,7 +483,8 @@ ISR(TIMER1_COMPA_vect)
     // Calculare new timer value
     unsigned short timer;
     unsigned short step_rate;
-    if (step_events_completed <= current_block->accelerate_until) {
+    if (step_events_completed <= (unsigned long int)current_block->accelerate_until) {
+      
       MultiU24X24toH16(acc_step_rate, acceleration_time, current_block->acceleration_rate);
       acc_step_rate += current_block->initial_rate;
       
@@ -482,10 +497,17 @@ ISR(TIMER1_COMPA_vect)
       OCR1A = timer;
       acceleration_time += timer;
       #ifdef ADVANCE
-        advance += advance_rate;
+        for(int8_t i=0; i < step_loops; i++) {
+          advance += advance_rate;
+        }
+        //if(advance > current_block->advance) advance = current_block->advance;
+        // Do E steps + advance steps
+        e_steps[current_block->active_extruder] += ((advance >>8) - old_advance);
+        old_advance = advance >>8;  
+        
       #endif
     } 
-    else if (step_events_completed > current_block->decelerate_after) {   
+    else if (step_events_completed > (unsigned long int)current_block->decelerate_after) {   
       MultiU24X24toH16(step_rate, deceleration_time, current_block->acceleration_rate);
       
       if(step_rate > acc_step_rate) { // Check step_rate stays positive
@@ -504,23 +526,25 @@ ISR(TIMER1_COMPA_vect)
       OCR1A = timer;
       deceleration_time += timer;
       #ifdef ADVANCE
-        advance -= advance_rate;
-        if(advance < final_advance)
-          advance = final_advance;
+        for(int8_t i=0; i < step_loops; i++) {
+          advance -= advance_rate;
+        }
+        if(advance < final_advance) advance = final_advance;
+        // Do E steps + advance steps
+        e_steps[current_block->active_extruder] += ((advance >>8) - old_advance);
+        old_advance = advance >>8;  
       #endif //ADVANCE
     }
     else {
       OCR1A = OCR1A_nominal;
     }
-    
+
     // If current block is finished, reset pointer 
     if (step_events_completed >= current_block->step_event_count) {
       current_block = NULL;
       plan_discard_current_block();
     }   
   } 
-  cli(); // disable interrupts
-  busy=false;
 }
 
 #ifdef ADVANCE
@@ -529,28 +553,60 @@ ISR(TIMER1_COMPA_vect)
   // Timer 0 is shared with millies
   ISR(TIMER0_COMPA_vect)
   {
-    // Critical section needed because Timer 1 interrupt has higher priority. 
-    // The pin set functions are placed on trategic position to comply with the stepper driver timing.
-    WRITE(E_STEP_PIN, LOW);
-    // Set E direction (Depends on E direction + advance)
-    if (e_steps < 0) {
-      WRITE(E_DIR_PIN,INVERT_E_DIR);    
-      e_steps++;
-      WRITE(E_STEP_PIN, HIGH);
-    } 
-    if (e_steps > 0) {
-      WRITE(E_DIR_PIN,!INVERT_E_DIR);
-      e_steps--;
-      WRITE(E_STEP_PIN, HIGH);
-    }
-    old_OCR0A += 25; // 10kHz interrupt
+    old_OCR0A += 52; // ~10kHz interrupt (250000 / 26 = 9615kHz)
     OCR0A = old_OCR0A;
+    // Set E direction (Depends on E direction + advance)
+    for(unsigned char i=0; i<4;i++) {
+      if (e_steps[0] != 0) {
+        WRITE(E0_STEP_PIN, LOW);
+        if (e_steps[0] < 0) {
+          WRITE(E0_DIR_PIN, INVERT_E0_DIR);
+          e_steps[0]++;
+          WRITE(E0_STEP_PIN, HIGH);
+        } 
+        else if (e_steps[0] > 0) {
+          WRITE(E0_DIR_PIN, !INVERT_E0_DIR);
+          e_steps[0]--;
+          WRITE(E0_STEP_PIN, HIGH);
+        }
+      }
+ #if EXTRUDERS > 1
+      if (e_steps[1] != 0) {
+        WRITE(E1_STEP_PIN, LOW);
+        if (e_steps[1] < 0) {
+          WRITE(E1_DIR_PIN, INVERT_E1_DIR);
+          e_steps[1]++;
+          WRITE(E1_STEP_PIN, HIGH);
+        } 
+        else if (e_steps[1] > 0) {
+          WRITE(E1_DIR_PIN, !INVERT_E1_DIR);
+          e_steps[1]--;
+          WRITE(E1_STEP_PIN, HIGH);
+        }
+      }
+ #endif
+ #if EXTRUDERS > 2
+      if (e_steps[2] != 0) {
+        WRITE(E2_STEP_PIN, LOW);
+        if (e_steps[2] < 0) {
+          WRITE(E2_DIR_PIN, INVERT_E2_DIR);
+          e_steps[2]++;
+          WRITE(E2_STEP_PIN, HIGH);
+        } 
+        else if (e_steps[2] > 0) {
+          WRITE(E2_DIR_PIN, !INVERT_E2_DIR);
+          e_steps[2]--;
+          WRITE(E2_STEP_PIN, HIGH);
+        }
+      }
+ #endif
+    }
   }
 #endif // ADVANCE
 
 void st_init()
 {
-    //Initialize Dir Pins
+  //Initialize Dir Pins
   #if X_DIR_PIN > -1
     SET_OUTPUT(X_DIR_PIN);
   #endif
@@ -560,8 +616,14 @@ void st_init()
   #if Z_DIR_PIN > -1 
     SET_OUTPUT(Z_DIR_PIN);
   #endif
-  #if E_DIR_PIN > -1 
-    SET_OUTPUT(E_DIR_PIN);
+  #if E0_DIR_PIN > -1 
+    SET_OUTPUT(E0_DIR_PIN);
+  #endif
+  #if defined(E1_DIR_PIN) && (E1_DIR_PIN > -1)
+    SET_OUTPUT(E1_DIR_PIN);
+  #endif
+  #if defined(E2_DIR_PIN) && (E2_DIR_PIN > -1)
+    SET_OUTPUT(E2_DIR_PIN);
   #endif
 
   //Initialize Enable Pins - steppers default to disabled.
@@ -578,9 +640,17 @@ void st_init()
     SET_OUTPUT(Z_ENABLE_PIN);
     if(!Z_ENABLE_ON) WRITE(Z_ENABLE_PIN,HIGH);
   #endif
-  #if (E_ENABLE_PIN > -1)
-    SET_OUTPUT(E_ENABLE_PIN);
-    if(!E_ENABLE_ON) WRITE(E_ENABLE_PIN,HIGH);
+  #if (E0_ENABLE_PIN > -1)
+    SET_OUTPUT(E0_ENABLE_PIN);
+    if(!E_ENABLE_ON) WRITE(E0_ENABLE_PIN,HIGH);
+  #endif
+  #if defined(E1_ENABLE_PIN) && (E1_ENABLE_PIN > -1)
+    SET_OUTPUT(E1_ENABLE_PIN);
+    if(!E_ENABLE_ON) WRITE(E1_ENABLE_PIN,HIGH);
+  #endif
+  #if defined(E2_ENABLE_PIN) && (E2_ENABLE_PIN > -1)
+    SET_OUTPUT(E2_ENABLE_PIN);
+    if(!E_ENABLE_ON) WRITE(E2_ENABLE_PIN,HIGH);
   #endif
 
   //endstops and pullups
@@ -641,8 +711,14 @@ void st_init()
   #if (Z_STEP_PIN > -1) 
     SET_OUTPUT(Z_STEP_PIN);
   #endif  
-  #if (E_STEP_PIN > -1) 
-    SET_OUTPUT(E_STEP_PIN);
+  #if (E0_STEP_PIN > -1) 
+    SET_OUTPUT(E0_STEP_PIN);
+  #endif  
+  #if defined(E1_STEP_PIN) && (E1_STEP_PIN > -1) 
+    SET_OUTPUT(E1_STEP_PIN);
+  #endif  
+  #if defined(E2_STEP_PIN) && (E2_STEP_PIN > -1) 
+    SET_OUTPUT(E2_STEP_PIN);
   #endif  
 
   // waveform generation = 0100 = CTC
@@ -661,20 +737,34 @@ void st_init()
   ENABLE_STEPPER_DRIVER_INTERRUPT();  
 
   #ifdef ADVANCE
-    e_steps = 0;
+  #if defined(TCCR0A) && defined(WGM01)
+    TCCR0A &= ~(1<<WGM01);
+    TCCR0A &= ~(1<<WGM00);
+  #endif  
+    e_steps[0] = 0;
+    e_steps[1] = 0;
+    e_steps[2] = 0;
     TIMSK0 |= (1<<OCIE0A);
   #endif //ADVANCE
+  
+  #ifdef ENDSTOPS_ONLY_FOR_HOMING
+    enable_endstops(false);
+  #else
+    enable_endstops(true);
+  #endif
+  
   sei();
 }
+
 
 // Block until all buffered steps are executed
 void st_synchronize()
 {
-  while(plan_get_current_block()) {
+    while( blocks_queued()) {
     manage_heater();
     manage_inactivity(1);
     LCD_STATUS;
-  }   
+  }
 }
 
 void st_set_position(const long &x, const long &y, const long &z, const long &e)
@@ -694,7 +784,7 @@ void st_set_e_position(const long &e)
   CRITICAL_SECTION_END;
 }
 
-long st_get_position(char axis)
+long st_get_position(uint8_t axis)
 {
   long count_pos;
   CRITICAL_SECTION_START;
@@ -702,3 +792,24 @@ long st_get_position(char axis)
   CRITICAL_SECTION_END;
   return count_pos;
 }
+
+void finishAndDisableSteppers()
+{
+  st_synchronize(); 
+  LCD_MESSAGEPGM("Released.");
+  disable_x(); 
+  disable_y(); 
+  disable_z(); 
+  disable_e0(); 
+  disable_e1(); 
+  disable_e2(); 
+}
+
+void quickStop()
+{
+  DISABLE_STEPPER_DRIVER_INTERRUPT();
+  while(blocks_queued())
+    plan_discard_current_block();
+  ENABLE_STEPPER_DRIVER_INTERRUPT();
+}
+

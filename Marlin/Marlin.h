@@ -1,29 +1,72 @@
+// Tonokip RepRap firmware rewrite based off of Hydra-mmm firmware.
+// Licence: GPL
+
 #ifndef __MARLINH
 #define __MARLINH
 
-// Tonokip RepRap firmware rewrite based off of Hydra-mmm firmware.
-// Licence: GPL
-#include <WProgram.h>
-#include "fastio.h"
+#define  HardwareSerial_h // trick to disable the standard HWserial
+
+#define  FORCE_INLINE __attribute__((always_inline)) inline
+
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <inttypes.h>
+
+#include <avr/delay.h>
 #include <avr/pgmspace.h>
+#include <avr/eeprom.h>
+#include  <avr/wdt.h>
+#include  <avr/interrupt.h>
+
+
+#include "fastio.h"
 #include "Configuration.h"
+#include "pins.h"
 
-//#define SERIAL_ECHO(x) Serial << "echo: " << x;
-//#define SERIAL_ECHOLN(x) Serial << "echo: "<<x<<endl;
-//#define SERIAL_ERROR(x) Serial << "Error: " << x;
-//#define SERIAL_ERRORLN(x) Serial << "Error: " << x<<endl;
-//#define SERIAL_PROTOCOL(x) Serial << x;
-//#define SERIAL_PROTOCOLLN(x) Serial << x<<endl;
+#if ARDUINO >= 100 
+  #if defined(__AVR_ATmega644P__)
+    #include "WProgram.h"
+  #else
+    #include "Arduino.h"
+  #endif
+#else
+   #include "WProgram.h"
+#endif
+
+#include "MarlinSerial.h"
+
+#ifndef cbi
+#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
+#endif
+#ifndef sbi
+#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#endif
+
+#include "WString.h"
 
 
 
-#define SERIAL_PROTOCOL(x) Serial.print(x);
-#define SERIAL_PROTOCOLPGM(x) serialprintPGM(PSTR(x));
-#define SERIAL_PROTOCOLLN(x) {Serial.print(x);Serial.write('\n');}
-#define SERIAL_PROTOCOLLNPGM(x) {serialprintPGM(PSTR(x));Serial.write('\n');}
+//this is a unfinsihed attemp to removes a lot of warning messages, see:
+// http://www.avrfreaks.net/index.php?name=PNphpBB2&file=printview&t=57011
+//typedef char prog_char PROGMEM; 
+// //#define PSTR    (s )        ((const PROGMEM char *)(s))
+// //# define MYPGM(s) (__extension__({static prog_char __c[] = (s); &__c[0];})) 
+// //#define MYPGM(s) ((const prog_char *g PROGMEM=s))
+// //#define MYPGM(s) PSTR(s)
+#define MYPGM(s)  (__extension__({static char __c[] __attribute__((__progmem__)) = (s); &__c[0];}))  //This is the normal behaviour
+//#define MYPGM(s)  (__extension__({static prog_char __c[]  = (s); &__c[0];})) //this does not work but hides the warnings
 
-const char errormagic[] PROGMEM ="Error:";
-const char echomagic[] PROGMEM ="echo:";
+
+#define SERIAL_PROTOCOL(x) MSerial.print(x);
+#define SERIAL_PROTOCOLPGM(x) serialprintPGM(MYPGM(x));
+#define SERIAL_PROTOCOLLN(x) {MSerial.print(x);MSerial.write('\n');}
+#define SERIAL_PROTOCOLLNPGM(x) {serialprintPGM(MYPGM(x));MSerial.write('\n');}
+
+
+const prog_char errormagic[] PROGMEM ="Error:";
+const prog_char echomagic[] PROGMEM ="echo:";
 #define SERIAL_ERROR_START serialprintPGM(errormagic);
 #define SERIAL_ERROR(x) SERIAL_PROTOCOL(x)
 #define SERIAL_ERRORPGM(x) SERIAL_PROTOCOLPGM(x)
@@ -40,13 +83,13 @@ const char echomagic[] PROGMEM ="echo:";
 
 
 //things to write to serial from Programmemory. saves 400 to 2k of RAM.
-#define SerialprintPGM(x) serialprintPGM(PSTR(x))
-inline void serialprintPGM(const char *str)
+#define SerialprintPGM(x) serialprintPGM(MYPGM(x))
+FORCE_INLINE void serialprintPGM(const char *str)
 {
   char ch=pgm_read_byte(str);
   while(ch)
   {
-    Serial.write(ch);
+    MSerial.write(ch);
     ch=pgm_read_byte(++str);
   }
 }
@@ -81,13 +124,30 @@ void manage_inactivity(byte debug);
   #define disable_z() ;
 #endif
 
-#if E_ENABLE_PIN > -1
-  #define  enable_e() WRITE(E_ENABLE_PIN, E_ENABLE_ON)
-  #define disable_e() WRITE(E_ENABLE_PIN,!E_ENABLE_ON)
+#if defined(E0_ENABLE_PIN) && (E0_ENABLE_PIN > -1)
+  #define enable_e0() WRITE(E0_ENABLE_PIN, E_ENABLE_ON)
+  #define disable_e0() WRITE(E0_ENABLE_PIN,!E_ENABLE_ON)
 #else
-  #define enable_e() ;
-  #define disable_e() ;
+  #define enable_e0()  /* nothing */
+  #define disable_e0() /* nothing */
 #endif
+
+#if (EXTRUDERS > 1) && defined(E1_ENABLE_PIN) && (E1_ENABLE_PIN > -1)
+  #define enable_e1() WRITE(E1_ENABLE_PIN, E_ENABLE_ON)
+  #define disable_e1() WRITE(E1_ENABLE_PIN,!E_ENABLE_ON)
+#else
+  #define enable_e1()  /* nothing */
+  #define disable_e1() /* nothing */
+#endif
+
+#if (EXTRUDERS > 2) && defined(E2_ENABLE_PIN) && (E2_ENABLE_PIN > -1)
+  #define enable_e2() WRITE(E2_ENABLE_PIN, E_ENABLE_ON)
+  #define disable_e2() WRITE(E2_ENABLE_PIN,!E_ENABLE_ON)
+#else
+  #define enable_e2()  /* nothing */
+  #define disable_e2() /* nothing */
+#endif
+
 
 enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3};
 
@@ -110,5 +170,10 @@ void prepare_arc_move(char isclockwise);
 extern float homing_feedrate[];
 extern bool axis_relative_modes[];
 extern float current_position[NUM_AXIS] ;
+extern float add_homeing[3];
+extern bool stop_heating_wait;
+
+// Handling multiple extruders pins
+extern uint8_t active_extruder;
 
 #endif

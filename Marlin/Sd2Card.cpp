@@ -17,11 +17,9 @@
  * along with the Arduino Sd2Card Library.  If not, see
  * <http://www.gnu.org/licenses/>.
  */
-#if ARDUINO < 100
-#include <WProgram.h>
-#else  // ARDUINO
-#include <Arduino.h>
-#endif  // ARDUINO
+#include "Marlin.h"
+
+#ifdef SDSUPPORT
 #include "Sd2Card.h"
 //------------------------------------------------------------------------------
 #ifndef SOFTWARE_SPI
@@ -640,3 +638,6 @@ bool Sd2Card::writeStop() {
   chipSelectHigh();
   return false;
 }
+
+
+#endif

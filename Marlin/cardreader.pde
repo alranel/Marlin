@@ -1,6 +1,8 @@
+#include "Marlin.h"
 #include "cardreader.h"
-//#include <unistd.h>
 #ifdef SDSUPPORT
+
+
 
 CardReader::CardReader()
 {
@@ -12,6 +14,7 @@ CardReader::CardReader()
    autostart_atmillis=0;
 
    autostart_stilltocheck=true; //the sd start is delayed, because otherwise the serial cannot answer fast enought to make contact with the hostsoftware.
+   lastnr=0;
   //power to SD reader
   #if SDPOWER > -1
     SET_OUTPUT(SDPOWER); 
@@ -38,7 +41,7 @@ char *createFilename(char *buffer,const dir_t &p) //buffer>12characters
 }
 
 
-void  CardReader::lsDive(char *prepend,SdFile parent)
+void  CardReader::lsDive(const char *prepend,SdFile parent)
 {
   dir_t p;
  uint8_t cnt=0;
@@ -160,6 +163,15 @@ void CardReader::initsd()
   {
     SERIAL_ECHOLNPGM("workDir open failed");
   }
+}
+
+void CardReader::setroot()
+{
+ curDir=&root;
+  if(!workDir.openRoot(&volume))
+  {
+    SERIAL_ECHOLNPGM("workDir open failed");
+  } 
 }
 void CardReader::release()
 {
@@ -332,7 +344,7 @@ void CardReader::checkautostart(bool force)
     if(!cardOK) //fail
       return;
   }
-  static int lastnr=0;
+  
   char autoname[30];
   sprintf(autoname,"auto%i.g",lastnr);
   for(int8_t i=0;i<(int)strlen(autoname);i++)
@@ -426,4 +438,18 @@ void CardReader::updir()
   }
 }
 
+
+void CardReader::printingHasFinished()
+{
+ st_synchronize();
+ quickStop();
+ sdprinting = false;
+ stop_heating_wait=true;
+ if(SD_FINISHED_STEPPERRELEASE)
+ {
+   //finishAndDisableSteppers();
+   enquecommand(SD_FINISHED_RELEASECOMMAND);
+ }
+ autotempShutdown();
+}
 #endif //SDSUPPORT

@@ -2,7 +2,7 @@
 #define __CARDREADERH
 
 #ifdef SDSUPPORT
- 
+
 #include "SdFile.h"
 enum LsAction {LS_SerialPrint,LS_Count,LS_GetFilename};
 class CardReader
@@ -22,6 +22,7 @@ public:
   void startFileprint();
   void pauseSDPrint();
   void getStatus();
+  void printingHasFinished();
 
   void getfilename(const uint8_t nr);
   uint16_t getnrfilenames();
@@ -30,11 +31,14 @@ public:
   void ls();
   void chdir(const char * relpath);
   void updir();
+  void setroot();
 
-  inline bool eof() { return sdpos>=filesize ;};
-  inline int16_t get() {  sdpos = file.curPosition();return (int16_t)file.read();};
-  inline void setIndex(long index) {sdpos = index;file.seekSet(index);};
-  inline uint8_t percentDone(){if(!sdprinting) return 0; if(filesize) return sdpos*100/filesize; else return 0;};
+
+  FORCE_INLINE bool eof() { return sdpos>=filesize ;};
+  FORCE_INLINE int16_t get() {  sdpos = file.curPosition();return (int16_t)file.read();};
+  FORCE_INLINE void setIndex(long index) {sdpos = index;file.seekSet(index);};
+  FORCE_INLINE uint8_t percentDone(){if(!sdprinting) return 0; if(filesize) return sdpos*100/filesize; else return 0;};
+  FORCE_INLINE char* getWorkDirName(){workDir.getFilename(filename);return filename;};
 
 public:
   bool saving;
@@ -42,6 +46,7 @@ public:
   bool cardOK ;
   char filename[11];
   bool filenameIsDir;
+  int lastnr; //last number of the autostart;
 private:
   SdFile root,*curDir,workDir,workDirParent,workDirParentParent;
   Sd2Card card;
@@ -57,7 +62,7 @@ private:
   LsAction lsAction; //stored for recursion.
   int16_t nrFiles; //counter for the files in the current directory and recycled as position counter for getting the nrFiles'th name in the directory.
   char* diveDirName;
-  void lsDive(char *prepend,SdFile parent);
+  void lsDive(const char *prepend,SdFile parent);
 };
   
 
@@ -67,31 +72,31 @@ private:
 class CardReader
 {
 public:
-  inline CardReader(){};
+  FORCE_INLINE CardReader(){};
   
-  inline static void initsd(){};
-  inline static void write_command(char *buf){};
+  FORCE_INLINE static void initsd(){};
+  FORCE_INLINE static void write_command(char *buf){};
   
-  inline static void checkautostart(bool x) {}; 
+  FORCE_INLINE static void checkautostart(bool x) {}; 
   
-  inline static void openFile(char* name,bool read){};
-  inline static void closefile() {};
-  inline static void release(){};
-  inline static void startFileprint(){};
-  inline static void startFilewrite(char *name){};
-  inline static void pauseSDPrint(){};
-  inline static void getStatus(){};
+  FORCE_INLINE static void openFile(char* name,bool read){};
+  FORCE_INLINE static void closefile() {};
+  FORCE_INLINE static void release(){};
+  FORCE_INLINE static void startFileprint(){};
+  FORCE_INLINE static void startFilewrite(char *name){};
+  FORCE_INLINE static void pauseSDPrint(){};
+  FORCE_INLINE static void getStatus(){};
   
-  inline static void selectFile(char* name){};
-  inline static void getfilename(const uint8_t nr){};
-  inline static uint8_t getnrfilenames(){return 0;};
+  FORCE_INLINE static void selectFile(char* name){};
+  FORCE_INLINE static void getfilename(const uint8_t nr){};
+  FORCE_INLINE static uint8_t getnrfilenames(){return 0;};
   
 
-  inline static void ls() {};
-  inline static bool eof() {return true;};
-  inline static char get() {return 0;};
-  inline static void setIndex(){};
-  inline uint8_t percentDone(){return 0;};
+  FORCE_INLINE static void ls() {};
+  FORCE_INLINE static bool eof() {return true;};
+  FORCE_INLINE static char get() {return 0;};
+  FORCE_INLINE static void setIndex(){};
+  FORCE_INLINE uint8_t percentDone(){return 0;};
 };
 #endif //SDSUPPORT
 #endif

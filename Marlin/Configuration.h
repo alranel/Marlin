@@ -15,6 +15,7 @@
 //#define BAUDRATE 115200
 //#define BAUDRATE 230400
 
+#define EXTRUDERS 1
 
 // Frequency limit
 // See nophead's blog for more info
@@ -25,9 +26,6 @@
 // of the buffer and all stops. This should not be much greater than zero and should only be changed
 // if unwanted behavior is observed on a user's machine when running at very slow speeds.
 #define MINIMUM_PLANNER_SPEED 2.0 // (mm/sec)
-
-// If defined the movements slow down when the look ahead buffer is only half full
-#define SLOWDOWN
 
 // BASIC SETTINGS: select your board type, thermistor type, axis scaling, and endstop configuration
 
@@ -60,18 +58,24 @@
 //#define HEATER_1_USES_THERMISTOR
 //#define HEATER_0_USES_AD595
 //#define HEATER_1_USES_AD595
+//#define HEATER_2_USES_AD595
 
 // Select one of these only to define how the bed temp is read.
+//#define THERMISTORBED 1
 #define BED_USES_THERMISTOR
+//#define BED_LIMIT_SWITCHING
+#ifdef BED_LIMIT_SWITCHING
+  #define BED_HYSTERESIS 2 //only disable heating if T>target+BED_HYSTERESIS and enable heating if T>target-BED_HYSTERESIS
+#endif
 //#define BED_USES_AD595
 
 #define BED_CHECK_INTERVAL 5000 //ms
 
-//// Experimental watchdog and minimal temp
-// The watchdog waits for the watchperiod in milliseconds whenever an M104 or M109 increases the target temperature
-// If the temperature has not increased at the end of that period, the target temperature is set to zero. It can be reset with another M104/M109
-/// CURRENTLY NOT IMPLEMENTED AND UNUSEABLE
-//#define WATCHPERIOD 5000 //5 seconds
+//// Heating sanity check:
+// This waits for the watchperiod in milliseconds whenever an M104 or M109 increases the target temperature
+// If the temperature has not increased at the end of that period, the target temperature is set to zero. 
+// It can be reset with another M104/M109
+//#define WATCHPERIOD 20000 //20 seconds
 
 // Actual temperature must be close to target for this long before M109 returns success
 #define TEMP_RESIDENCY_TIME 20  // (seconds)
@@ -91,22 +95,25 @@
 #define BED_MAXTEMP 150
 
 
+// Wait for Cooldown
+// This defines if the M109 call should not block if it is cooling down.
+// example: From a current temp of 220, you set M109 S200. 
+// if CooldownNoWait is defined M109 will not wait for the cooldown to finish
+#define CooldownNoWait true
+
+// Heating is finished if a temperature close to this degree shift is reached
+#define HEATING_EARLY_FINISH_DEG_OFFSET 1 //Degree
 
 // PID settings:
 // Uncomment the following line to enable PID support.
-  
 #define PIDTEMP
+#define PID_MAX 255 // limits current to nozzle; 255=full current
 #ifdef PIDTEMP
-  #if MOTHERBOARD == 62
-    #error Sanguinololu does not support PID, sorry. Please disable it.
-  #endif
   //#define PID_DEBUG // Sends debug data to the serial port. 
   //#define PID_OPENLOOP 1 // Puts PID in open loop. M104 sets the output power in %
-  
-  #define PID_MAX 255 // limits current to nozzle; 255=full current
   #define PID_INTEGRAL_DRIVE_MAX 255  //limit for the integral term
   #define K1 0.95 //smoothing factor withing the PID
-  #define PID_dT 0.1 //sampling period of the PID
+  #define PID_dT 0.128 //sampling period of the PID
 
   //To develop some PID settings for your machine, you can initiall follow 
   // the Ziegler-Nichols method.
@@ -134,6 +141,11 @@
     #define  DEFAULT_Ki (1.25*PID_dT)  
     #define  DEFAULT_Kd (99/PID_dT)  
 
+// Makergear
+//    #define  DEFAULT_Kp 7.0
+//    #define  DEFAULT_Ki 0.1  
+//    #define  DEFAULT_Kd 12  
+
 // Mendel Parts V9 on 12V    
 //    #define  DEFAULT_Kp  63.0
 //    #define  DEFAULT_Ki (2.25*PID_dT)  
@@ -151,9 +163,18 @@
   // if Kc is choosen well, the additional required power due to increased melting should be compensated.
   #define PID_ADD_EXTRUSION_RATE  
   #ifdef PID_ADD_EXTRUSION_RATE
-    #define  DEFAULT_Kc (3) //heatingpower=Kc*(e_speed)
+    #define  DEFAULT_Kc (1) //heatingpower=Kc*(e_speed)
   #endif
 #endif // PIDTEMP
+
+//  extruder run-out prevention. 
+//if the machine is idle, and the temperature over MINTEMP, every couple of SECONDS some filament is extruded
+//#define EXTRUDER_RUNOUT_PREVENT  
+#define EXTRUDER_RUNOUT_MINTEMP 190  
+#define EXTRUDER_RUNOUT_SECONDS 30.
+#define EXTRUDER_RUNOUT_ESTEPS 14. //mm filament
+#define EXTRUDER_RUNOUT_SPEED 1500.  //extrusion speed
+#define EXTRUDER_RUNOUT_EXTRUDE 100
 
 
 //===========================================================================
@@ -163,35 +184,39 @@
 
 // Endstop Settings
 #define ENDSTOPPULLUPS // Comment this out (using // at the start of the line) to disable the endstop pullup resistors
+
 // The pullups are needed if you directly connect a mechanical endswitch between the signal and ground pins.
 const bool X_ENDSTOPS_INVERTING = true; // set to true to invert the logic of the endstops. 
 const bool Y_ENDSTOPS_INVERTING = true; // set to true to invert the logic of the endstops. 
 const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of the endstops. 
 // For optos H21LOB set to true, for Mendel-Parts newer optos TCST2103 set to false
 
+#define ENDSTOPS_ONLY_FOR_HOMING // If defined the endstops will only be used for homing
 
 // For Inverting Stepper Enable Pins (Active Low) use 0, Non Inverting (Active High) use 1
 #define X_ENABLE_ON 0
 #define Y_ENABLE_ON 0
 #define Z_ENABLE_ON 0
-#define E_ENABLE_ON 0
+#define E_ENABLE_ON 0 // For all extruders
 
 // Disables axis when it's not being used.
 #define DISABLE_X false
 #define DISABLE_Y false
 #define DISABLE_Z false
-#define DISABLE_E false
+#define DISABLE_E false // For all extruders
 
 // Inverting axis direction
 //#define INVERT_X_DIR false    // for Mendel set to false, for Orca set to true
 //#define INVERT_Y_DIR true   // for Mendel set to true, for Orca set to false
 //#define INVERT_Z_DIR false    // for Mendel set to false, for Orca set to true
-//#define INVERT_E_DIR true   // for direct drive extruder v9 set to true, for geared extruder set to false
+//#define INVERT_E*_DIR true   // for direct drive extruder v9 set to true, for geared extruder set to false, used for all extruders
 
 #define INVERT_X_DIR false     // for Mendel set to false, for Orca set to true
 #define INVERT_Y_DIR true    // for Mendel set to true, for Orca set to false
 #define INVERT_Z_DIR true     // for Mendel set to false, for Orca set to true
-#define INVERT_E_DIR false    // for direct drive extruder v9 set to true, for geared extruder set to false
+#define INVERT_E0_DIR false   // for direct drive extruder v9 set to true, for geared extruder set to false
+#define INVERT_E1_DIR false    // for direct drive extruder v9 set to true, for geared extruder set to false
+#define INVERT_E2_DIR false   // for direct drive extruder v9 set to true, for geared extruder set to false
 
 //// ENDSTOP SETTINGS:
 // Sets direction of endstops when homing; 1=MAX, -1=MIN
@@ -209,6 +234,12 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E
 #define HOMING_FEEDRATE {1500,1500,180}  // set the homing speeds (mm/min)
 
+//homing hits the endstop, then retracts by this distance, before it tries to slowly bump again:
+#define X_HOME_RETRACT_MM 5 
+#define Y_HOME_RETRACT_MM 5 
+#define Z_HOME_RETRACT_MM 1 
+#define QUICK_HOME  //if this is defined, if both x and y are to be homed, a diagonal move will be performed initially.
+
 #define AXIS_RELATIVE_MODES {false, false, false, false}
 
 #define MAX_STEP_FREQUENCY 40000 // Max step frequency for Ultimaker (5000 pps / half step)
@@ -220,17 +251,22 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define DEFAULT_MAX_ACCELERATION      {9000,9000,100,10000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for skeinforge 40+, for older versions raise them a lot.
 
 #define DEFAULT_ACCELERATION          3000    // X, Y, Z and E max acceleration in mm/s^2 for printing moves 
-#define DEFAULT_RETRACT_ACCELERATION  7000   // X, Y, Z and E max acceleration in mm/s^2 for r retracts
+#define DEFAULT_RETRACT_ACCELERATION  3000   // X, Y, Z and E max acceleration in mm/s^2 for r retracts
 
 #define DEFAULT_MINIMUMFEEDRATE       0.0     // minimum feedrate
 #define DEFAULT_MINTRAVELFEEDRATE     0.0
 
 // minimum time in microseconds that a movement needs to take if the buffer is emptied.   Increase this number if you see blobs while printing high speed & high detail.  It will slowdown on the detailed stuff.
 #define DEFAULT_MINSEGMENTTIME        20000   // Obsolete delete this
-#define DEFAULT_XYJERK                30.0    // (mm/sec)
+#define DEFAULT_XYJERK                20.0    // (mm/sec)
 #define DEFAULT_ZJERK                 0.4     // (mm/sec)
 
+// If defined the movements slow down when the look ahead buffer is only half full
+#define SLOWDOWN
 
+//default stepper release if idle
+#define DEFAULT_STEPPER_DEACTIVE_TIME 60
+#define DEFAULT_STEPPER_DEACTIVE_COMMAND "M84 X Y E"  //z stays  powered
 
 
 //===========================================================================
@@ -269,10 +305,10 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 //#define ADVANCE
 
 #ifdef ADVANCE
-  #define EXTRUDER_ADVANCE_K .3
+  #define EXTRUDER_ADVANCE_K .0
 
-  #define D_FILAMENT 1.7
-  #define STEPS_MM_E 65
+  #define D_FILAMENT 2.85
+  #define STEPS_MM_E 836
   #define EXTRUTION_AREA (0.25 * D_FILAMENT * D_FILAMENT * 3.14159)
   #define STEPS_PER_CUBIC_MM_E (axis_steps_per_unit[E_AXIS]/ EXTRUTION_AREA)
 
@@ -282,6 +318,8 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 //LCD and SD support
 //#define ULTRA_LCD  //general lcd support, also 16x2
 //#define SDSUPPORT // Enable SD Card Support in Hardware Console
+#define SD_FINISHED_STEPPERRELEASE true  //if sd support and the file is finished: disable steppers?
+#define SD_FINISHED_RELEASECOMMAND "M84 X Y E" // no z because of layer shift.
 
 //#define ULTIPANEL
 #ifdef ULTIPANEL
@@ -318,8 +356,18 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
   #define AUTOTEMP_OLDWEIGHT 0.98
 #endif
 
+//this prevents dangerous Extruder moves, i.e. if the temperature is under the limit
+//can be software-disabled for whatever purposes by
+#define PREVENT_DANGEROUS_EXTRUDE
+#define EXTRUDE_MINTEMP 190
+#define EXTRUDE_MAXLENGTH (X_MAX_LENGTH+Y_MAX_LENGTH) //prevent extrusion of very large distances.
 
 const int dropsegments=5; //everything with less than this number of steps will be ignored as move and joined with the next movement
+
+
+// M240  Triggers a camera by emulating a Canon RC-1 Remote
+// Data from: http://www.doc-diy.net/photo/rc-1_hacked/
+// #define PHOTOGRAPH_PIN     23
 
 //===========================================================================
 //=============================Buffers           ============================

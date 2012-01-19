@@ -1,9 +1,8 @@
 #ifndef __ULTRALCDH
 #define __ULTRALCDH
-#include "Configuration.h"
-
+#include "Marlin.h"
 #ifdef ULTRA_LCD
-
+  #include <LiquidCrystal.h>
   void lcd_status();
   void lcd_init();
   void lcd_status(const char* message);
@@ -15,7 +14,7 @@
   #define STATUSTIMEOUT 15000
 
 
-  #include <LiquidCrystal.h>
+  
   extern LiquidCrystal lcd;
 
 
@@ -79,7 +78,7 @@
     bool tune;
     
   private:
-    inline void updateActiveLines(const uint8_t &maxlines,volatile int &encoderpos)
+    FORCE_INLINE void updateActiveLines(const uint8_t &maxlines,volatile int &encoderpos)
     {
       if(linechanging) return; // an item is changint its value, do not switch lines hence
       lastlineoffset=lineoffset; 
@@ -104,7 +103,6 @@
             curencoderpos=maxlines*lcdslow; 
         } 
         lastencoderpos=encoderpos=curencoderpos;
-        int lastactiveline=activeline;
         activeline=curencoderpos/lcdslow;
         if(activeline<0) activeline=0;
         if(activeline>LCD_HEIGHT-1) activeline=LCD_HEIGHT-1;
@@ -119,7 +117,7 @@
       } 
     }
     
-    inline void clearIfNecessary()
+    FORCE_INLINE void clearIfNecessary()
     {
       if(lastlineoffset!=lineoffset ||force_lcd_update)
       {
@@ -137,13 +135,13 @@
 
 
   #define LCD_MESSAGE(x) lcd_status(x);
-  #define LCD_MESSAGEPGM(x) lcd_statuspgm(PSTR(x));
+  #define LCD_MESSAGEPGM(x) lcd_statuspgm(MYPGM(x));
   #define LCD_STATUS lcd_status()
 #else //no lcd
   #define LCD_STATUS
   #define LCD_MESSAGE(x)
   #define LCD_MESSAGEPGM(x)
-  inline void lcd_status() {};
+  FORCE_INLINE void lcd_status() {};
 #endif
   
 #ifndef ULTIPANEL  
@@ -153,5 +151,13 @@
   
 void lcd_statuspgm(const char* message);
   
+char *ftostr3(const float &x);
+char *itostr2(const uint8_t &x);
+char *ftostr31(const float &x);
+char *ftostr32(const float &x);
+char *itostr31(const int &xx);
+char *itostr3(const int &xx);
+char *itostr4(const int &xx);
+char *ftostr51(const float &x);
 #endif //ULTRALCD
 
