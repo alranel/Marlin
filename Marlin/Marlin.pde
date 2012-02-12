@@ -164,8 +164,7 @@ const int sensitive_pins[] = SENSITIVE_PINS; // Sensitive pin list for M42
 //Inactivity shutdown variables
 static unsigned long previous_millis_cmd = 0;
 static unsigned long max_inactive_time = 0;
-static unsigned long stepper_inactive_time = DEFAULT_STEPPER_DEACTIVE_TIME*1000;
-static unsigned long last_stepperdisabled_time=30*1000; //first release check after 30 seconds
+static unsigned long stepper_inactive_time = DEFAULT_STEPPER_DEACTIVE_TIME*1000l;
 
 static unsigned long starttime=0;
 static unsigned long stoptime=0;
@@ -247,10 +246,20 @@ void suicide()
 void setup()
 { 
   setup_powerhold();
-  MSerial.begin(BAUDRATE);
-  SERIAL_ECHO_START;
-  SERIAL_ECHOLNPGM(VERSION_STRING);
+  MYSERIAL.begin(BAUDRATE);
   SERIAL_PROTOCOLLNPGM("start");
+  SERIAL_ECHO_START;
+  SERIAL_ECHOPGM("Marlin: ");
+  SERIAL_ECHOLNPGM(VERSION_STRING);
+  #ifdef STRING_VERSION_CONFIG_H
+    #ifdef STRING_CONFIG_H_AUTHOR
+      SERIAL_ECHO_START;
+      SERIAL_ECHOPGM("Configuration.h: ");
+      SERIAL_ECHOPGM(STRING_VERSION_CONFIG_H);
+      SERIAL_ECHOPGM(" | Author: ");
+      SERIAL_ECHOLNPGM(STRING_CONFIG_H_AUTHOR);
+    #endif
+  #endif
   SERIAL_ECHO_START;
   SERIAL_ECHOPGM("Free Memory:");
   SERIAL_ECHO(freeMemory());
@@ -318,8 +327,8 @@ void loop()
 
 void get_command() 
 { 
-  while( MSerial.available() > 0  && buflen < BUFSIZE) {
-    serial_char = MSerial.read();
+  while( MYSERIAL.available() > 0  && buflen < BUFSIZE) {
+    serial_char = MYSERIAL.read();
     if(serial_char == '\n' || serial_char == '\r' || serial_char == ':' || serial_count >= (MAX_CMD_SIZE - 1) ) 
     {
       if(!serial_count) return; //if empty line
@@ -832,7 +841,7 @@ void process_commands()
         /* continue to loop until we have reached the target temp   
           _and_ until TEMP_RESIDENCY_TIME hasn't passed since we reached it */
         while((residencyStart == -1) ||
-              (residencyStart > -1 && (millis() - residencyStart) < TEMP_RESIDENCY_TIME*1000) ) {
+              (residencyStart > -1 && (millis() - residencyStart) < TEMP_RESIDENCY_TIME*1000l) ) {
       #else
         while ( target_direction ? (isHeatingHotend(tmp_extruder)) : (isCoolingHotend(tmp_extruder)&&(CooldownNoWait==false)) ) {
       #endif //TEMP_RESIDENCY_TIME
@@ -1209,7 +1218,7 @@ void process_commands()
 void FlushSerialRequestResend()
 {
   //char cmdbuffer[bufindr][100]="Resend:";
-  MSerial.flush();
+  MYSERIAL.flush();
   SERIAL_PROTOCOLPGM("Resend:");
   SERIAL_PROTOCOLLN(gcode_LastN + 1);
   ClearToSend();
@@ -1286,16 +1295,15 @@ void manage_inactivity(byte debug)
   if( (millis() - previous_millis_cmd) >  max_inactive_time ) 
     if(max_inactive_time) 
       kill(); 
-  if(stepper_inactive_time)  
-  if( (millis() - last_stepperdisabled_time) >  stepper_inactive_time ) 
-  {
-    if(previous_millis_cmd>last_stepperdisabled_time)
-      last_stepperdisabled_time=previous_millis_cmd;
-    else
+  if(stepper_inactive_time)  {
+    if( (millis() - previous_millis_cmd) >  stepper_inactive_time ) 
     {
-      if(  (X_ENABLE_ON && (READ(X_ENABLE_PIN)!=0))  ||  (!X_ENABLE_ON && READ(X_ENABLE_PIN)==0)  )
-        enquecommand(DEFAULT_STEPPER_DEACTIVE_COMMAND); 
-      last_stepperdisabled_time=millis();
+      disable_x();
+      disable_y();
+      disable_z();
+      disable_e0();
+      disable_e1();
+      disable_e2();
     }
   }
   #ifdef EXTRUDER_RUNOUT_PREVENT
@@ -1313,7 +1321,6 @@ void manage_inactivity(byte debug)
      destination[E_AXIS]=oldedes;
      plan_set_e_position(oldepos);
      previous_millis_cmd=millis();
-     //enquecommand(DEFAULT_STEPPER_DEACTIVE_COMMAND);
      st_synchronize();
      WRITE(E0_ENABLE_PIN,oldstatus);
     }
