@@ -95,7 +95,7 @@
 //this prevents dangerous Extruder moves, i.e. if the temperature is under the limit
 //can be software-disabled for whatever purposes by
 #define PREVENT_DANGEROUS_EXTRUDE
-#define EXTRUDE_MINTEMP 190
+#define EXTRUDE_MINTEMP 180
 #define EXTRUDE_MAXLENGTH (X_MAX_LENGTH+Y_MAX_LENGTH) //prevent extrusion of very large distances.
 
 //===========================================================================
@@ -119,7 +119,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 // Disables axis when it's not being used.
 #define DISABLE_X false
 #define DISABLE_Y false
-#define DISABLE_Z false
+#define DISABLE_Z true
 #define DISABLE_E false // For all extruders
 
 // Inverting axis direction
