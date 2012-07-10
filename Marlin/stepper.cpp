@@ -21,9 +21,6 @@
 /* The timer calculations of this module informed by the 'RepRap cartesian firmware' by Zack Smith
    and Philipp Tiefenbacher. */
 
-
-
-
 #include "Marlin.h"
 #include "stepper.h"
 #include "planner.h"
@@ -57,7 +54,6 @@ volatile static unsigned long step_events_completed; // The number of step event
   static long old_advance = 0;
 #endif
 static long e_steps[3];
-static unsigned char busy = false; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 static long acceleration_time, deceleration_time;
 //static unsigned long accelerate_until, decelerate_after, acceleration_rate, initial_rate, final_rate, nominal_rate;
 static unsigned short acc_step_rate; // needed for deccelaration start point
@@ -86,11 +82,7 @@ volatile char count_direction[NUM_AXIS] = { 1, 1, 1, 1};
 //=============================functions         ============================
 //===========================================================================
 
-#ifdef ENDSTOPS_ONLY_FOR_HOMING
-  #define CHECK_ENDSTOPS  if(check_endstops)
-#else
-  #define CHECK_ENDSTOPS
-#endif
+#define CHECK_ENDSTOPS  if(check_endstops)
 
 // intRes = intIn1 * intIn2 >> 16
 // uses:
@@ -219,7 +211,6 @@ void enable_endstops(bool check)
 
 void st_wake_up() {
   //  TCNT1 = 0;
-  if(busy == false) 
   ENABLE_STEPPER_DRIVER_INTERRUPT();  
 }
 
@@ -239,8 +230,8 @@ FORCE_INLINE unsigned short calc_timer(unsigned short step_rate) {
     step_loops = 1;
   } 
   
-  if(step_rate < 32) step_rate = 32;
-  step_rate -= 32; // Correct for minimal speed
+  if(step_rate < (F_CPU/500000)) step_rate = (F_CPU/500000);
+  step_rate -= (F_CPU/500000); // Correct for minimal speed
   if(step_rate >= (8*256)){ // higher step rate 
     unsigned short table_address = (unsigned short)&speed_lookuptable_fast[(unsigned char)(step_rate>>8)][0];
     unsigned char tmp_step_rate = (step_rate & 0x00ff);
@@ -270,12 +261,10 @@ FORCE_INLINE void trapezoid_generator_reset() {
   #endif
   deceleration_time = 0;
   // step_rate to timer interval
+  OCR1A_nominal = calc_timer(current_block->nominal_rate);
   acc_step_rate = current_block->initial_rate;
   acceleration_time = calc_timer(acc_step_rate);
   OCR1A = acceleration_time;
-  OCR1A_nominal = calc_timer(current_block->nominal_rate);
-  
-
   
 //    SERIAL_ECHO_START;
 //    SERIAL_ECHOPGM("advance :");
@@ -298,12 +287,14 @@ ISR(TIMER1_COMPA_vect)
     // Anything in the buffer?
     current_block = plan_get_current_block();
     if (current_block != NULL) {
+      current_block->busy = true;
       trapezoid_generator_reset();
       counter_x = -(current_block->step_event_count >> 1);
       counter_y = counter_x;
       counter_z = counter_x;
       counter_e = counter_x;
-      step_events_completed = 0;
+      step_events_completed = 0; 
+      
       #ifdef Z_LATE_ENABLE 
         if(current_block->steps_z > 0) {
           enable_z();
@@ -666,73 +657,80 @@ void st_init()
   #endif
 
   //endstops and pullups
-  #ifdef ENDSTOPPULLUPS
-    #if X_MIN_PIN > -1
-      SET_INPUT(X_MIN_PIN); 
+  
+  #if X_MIN_PIN > -1
+    SET_INPUT(X_MIN_PIN); 
+    #ifdef ENDSTOPPULLUP_XMIN
       WRITE(X_MIN_PIN,HIGH);
     #endif
-    #if X_MAX_PIN > -1
-      SET_INPUT(X_MAX_PIN); 
-      WRITE(X_MAX_PIN,HIGH);
-    #endif
-    #if Y_MIN_PIN > -1
-      SET_INPUT(Y_MIN_PIN); 
+  #endif
+      
+  #if Y_MIN_PIN > -1
+    SET_INPUT(Y_MIN_PIN); 
+    #ifdef ENDSTOPPULLUP_YMIN
       WRITE(Y_MIN_PIN,HIGH);
     #endif
-    #if Y_MAX_PIN > -1
-      SET_INPUT(Y_MAX_PIN); 
-      WRITE(Y_MAX_PIN,HIGH);
-    #endif
-    #if Z_MIN_PIN > -1
-      SET_INPUT(Z_MIN_PIN); 
+  #endif
+  
+  #if Z_MIN_PIN > -1
+    SET_INPUT(Z_MIN_PIN); 
+    #ifdef ENDSTOPPULLUP_ZMIN
       WRITE(Z_MIN_PIN,HIGH);
     #endif
-    #if Z_MAX_PIN > -1
-      SET_INPUT(Z_MAX_PIN); 
+  #endif
+      
+  #if X_MAX_PIN > -1
+    SET_INPUT(X_MAX_PIN); 
+    #ifdef ENDSTOPPULLUP_XMAX
+      WRITE(X_MAX_PIN,HIGH);
+    #endif
+  #endif
+      
+  #if Y_MAX_PIN > -1
+    SET_INPUT(Y_MAX_PIN); 
+    #ifdef ENDSTOPPULLUP_YMAX
+      WRITE(Y_MAX_PIN,HIGH);
+    #endif
+  #endif
+  
+  #if Z_MAX_PIN > -1
+    SET_INPUT(Z_MAX_PIN); 
+    #ifdef ENDSTOPPULLUP_ZMAX
       WRITE(Z_MAX_PIN,HIGH);
     #endif
-  #else //ENDSTOPPULLUPS
-    #if X_MIN_PIN > -1
-      SET_INPUT(X_MIN_PIN); 
-    #endif
-    #if X_MAX_PIN > -1
-      SET_INPUT(X_MAX_PIN); 
-    #endif
-    #if Y_MIN_PIN > -1
-      SET_INPUT(Y_MIN_PIN); 
-    #endif
-    #if Y_MAX_PIN > -1
-      SET_INPUT(Y_MAX_PIN); 
-    #endif
-    #if Z_MIN_PIN > -1
-      SET_INPUT(Z_MIN_PIN); 
-    #endif
-    #if Z_MAX_PIN > -1
-      SET_INPUT(Z_MAX_PIN); 
-    #endif
-  #endif //ENDSTOPPULLUPS
+  #endif
  
 
   //Initialize Step Pins
   #if (X_STEP_PIN > -1) 
     SET_OUTPUT(X_STEP_PIN);
+    if(!X_ENABLE_ON) WRITE(X_ENABLE_PIN,HIGH);
   #endif  
   #if (Y_STEP_PIN > -1) 
     SET_OUTPUT(Y_STEP_PIN);
+    if(!Y_ENABLE_ON) WRITE(Y_ENABLE_PIN,HIGH);
   #endif  
   #if (Z_STEP_PIN > -1) 
     SET_OUTPUT(Z_STEP_PIN);
+    if(!Z_ENABLE_ON) WRITE(Z_ENABLE_PIN,HIGH);
   #endif  
   #if (E0_STEP_PIN > -1) 
     SET_OUTPUT(E0_STEP_PIN);
+    if(!E_ENABLE_ON) WRITE(E0_ENABLE_PIN,HIGH);
   #endif  
   #if defined(E1_STEP_PIN) && (E1_STEP_PIN > -1) 
     SET_OUTPUT(E1_STEP_PIN);
+    if(!E_ENABLE_ON) WRITE(E1_ENABLE_PIN,HIGH);
   #endif  
   #if defined(E2_STEP_PIN) && (E2_STEP_PIN > -1) 
     SET_OUTPUT(E2_STEP_PIN);
+    if(!E_ENABLE_ON) WRITE(E2_ENABLE_PIN,HIGH);
   #endif  
 
+  #ifdef CONTROLLERFAN_PIN
+    SET_OUTPUT(CONTROLLERFAN_PIN); //Set pin used for driver cooling fan
+  #endif
+  
   // waveform generation = 0100 = CTC
   TCCR1B &= ~(1<<WGM13);
   TCCR1B |=  (1<<WGM12);
@@ -742,7 +740,13 @@ void st_init()
   // output mode = 00 (disconnected)
   TCCR1A &= ~(3<<COM1A0); 
   TCCR1A &= ~(3<<COM1B0); 
-  TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (2<<CS10); // 2MHz timer
+  
+  // Set the timer pre-scaler
+  // Generally we use a divider of 8, resulting in a 2MHz timer
+  // frequency on a 16MHz MCU. If you are going to change this, be
+  // sure to regenerate speed_lookuptable.h with
+  // create_speed_lookuptable.py
+  TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (2<<CS10);
 
   OCR1A = 0x4000;
   TCNT1 = 0;
@@ -759,12 +763,7 @@ void st_init()
     TIMSK0 |= (1<<OCIE0A);
   #endif //ADVANCE
   
-  #ifdef ENDSTOPS_ONLY_FOR_HOMING
-    enable_endstops(false);
-  #else
-    enable_endstops(true);
-  #endif
-  
+  enable_endstops(true); // Start with endstops active. After homing they can be disabled
   sei();
 }
 

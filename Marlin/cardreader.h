@@ -1,5 +1,5 @@
-#ifndef __CARDREADERH
-#define __CARDREADERH
+#ifndef CARDREADER_H
+#define CARDREADER_H
 
 #ifdef SDSUPPORT
 
@@ -17,6 +17,7 @@ public:
 
   void checkautostart(bool x); 
   void openFile(char* name,bool read);
+  void removeFile(char* name);
   void closefile();
   void release();
   void startFileprint();
@@ -44,7 +45,7 @@ public:
   bool saving;
   bool sdprinting ;  
   bool cardOK ;
-  char filename[11];
+  char filename[12];
   bool filenameIsDir;
   int lastnr; //last number of the autostart;
 private:

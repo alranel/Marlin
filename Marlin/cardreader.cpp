@@ -53,7 +53,7 @@ void  CardReader::lsDive(const char *prepend,SdFile parent)
  
   while (parent.readDir(p) > 0)
   {
-    if( DIR_IS_SUBDIR(&p) && lsAction!=LS_Count && lsAction!=LS_GetFilename)
+    if( DIR_IS_SUBDIR(&p) && lsAction!=LS_Count && lsAction!=LS_GetFilename) // hence LS_SerialPrint
     {
 
       char path[13*2];
@@ -95,8 +95,10 @@ void  CardReader::lsDive(const char *prepend,SdFile parent)
         if ( p.name[1] != '.')
         continue;
       }
+      
       if (!DIR_IS_FILE_OR_SUBDIR(&p)) continue;
       filenameIsDir=DIR_IS_SUBDIR(&p);
+      
       
       if(!filenameIsDir)
       {
@@ -163,20 +165,26 @@ void CardReader::initsd()
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM(MSG_SD_CARD_OK);
   }
+  workDir=root;
   curDir=&root;
+  /*
   if(!workDir.openRoot(&volume))
   {
     SERIAL_ECHOLNPGM(MSG_SD_WORKDIR_FAIL);
   }
+  */
+  
 }
 
 void CardReader::setroot()
 {
- curDir=&root;
-  if(!workDir.openRoot(&volume))
+  /*if(!workDir.openRoot(&volume))
   {
     SERIAL_ECHOLNPGM(MSG_SD_WORKDIR_FAIL);
-  } 
+  }*/
+  workDir=root;
+  
+  curDir=&workDir;
 }
 void CardReader::release()
 {
@@ -294,6 +302,75 @@ void CardReader::openFile(char* name,bool read)
       LCD_MESSAGE(fname);
     }
   }
+  
+}
+
+void CardReader::removeFile(char* name)
+{
+  if(!cardOK)
+    return;
+  file.close();
+  sdprinting = false;
+  
+  
+  SdFile myDir;
+  curDir=&root;
+  char *fname=name;
+  
+  char *dirname_start,*dirname_end;
+  if(name[0]=='/')
+  {
+    dirname_start=strchr(name,'/')+1;
+    while(dirname_start>0)
+    {
+      dirname_end=strchr(dirname_start,'/');
+      //SERIAL_ECHO("start:");SERIAL_ECHOLN((int)(dirname_start-name));
+      //SERIAL_ECHO("end  :");SERIAL_ECHOLN((int)(dirname_end-name));
+      if(dirname_end>0 && dirname_end>dirname_start)
+      {
+        char subdirname[13];
+        strncpy(subdirname, dirname_start, dirname_end-dirname_start);
+        subdirname[dirname_end-dirname_start]=0;
+        SERIAL_ECHOLN(subdirname);
+        if(!myDir.open(curDir,subdirname,O_READ))
+        {
+          SERIAL_PROTOCOLPGM("open failed, File: ");
+          SERIAL_PROTOCOL(subdirname);
+          SERIAL_PROTOCOLLNPGM(".");
+          return;
+        }
+        else
+          ;//SERIAL_ECHOLN("dive ok");
+          
+        curDir=&myDir; 
+        dirname_start=dirname_end+1;
+      }
+      else // the reminder after all /fsa/fdsa/ is the filename
+      {
+        fname=dirname_start;
+        //SERIAL_ECHOLN("remaider");
+        //SERIAL_ECHOLN(fname);
+        break;
+      }
+      
+    }
+  }
+  else //relative path
+  {
+    curDir=&workDir;
+  }
+    if (file.remove(curDir, fname)) 
+    {
+      SERIAL_PROTOCOLPGM("File deleted:");
+      SERIAL_PROTOCOL(fname);
+      sdpos = 0;
+    }
+    else
+    {
+      SERIAL_PROTOCOLPGM("Deletion failed, File: ");
+      SERIAL_PROTOCOL(fname);
+      SERIAL_PROTOCOLLNPGM(".");
+    }
   
 }
 
