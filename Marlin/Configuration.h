@@ -233,7 +233,7 @@ const bool Z_ENDSTOPS_INVERTING = false; // set to true to invert the logic of t
 // Travel limits after homing
 #define X_MAX_POS 147
 #define X_MIN_POS -18
-#define Y_MAX_POS 205
+#define Y_MAX_POS 175
 #define Y_MIN_POS 0
 #define Z_MAX_POS 75
 #define Z_MIN_POS 0
@@ -259,7 +259,7 @@ const bool Z_ENDSTOPS_INVERTING = false; // set to true to invert the logic of t
 
 #define DEFAULT_AXIS_STEPS_PER_UNIT   {44.5,44.5,2560,658}  // default steps per unit for ultimaker 
 #define DEFAULT_MAX_FEEDRATE          {600, 600, 4, 500}    // (mm/sec)    
-#define DEFAULT_MAX_ACCELERATION      {8000,8000,100,10000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for skeinforge 40+, for older versions raise them a lot.
+#define DEFAULT_MAX_ACCELERATION      {5000,8000,100,10000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for skeinforge 40+, for older versions raise them a lot.
 
 #define DEFAULT_ACCELERATION          3000    // X, Y, Z and E max acceleration in mm/s^2 for printing moves 
 #define DEFAULT_RETRACT_ACCELERATION  3000   // X, Y, Z and E max acceleration in mm/s^2 for r retracts
