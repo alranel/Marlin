@@ -106,14 +106,14 @@
 
 // If you are using a preconfigured hotend then you can use one of the value sets by uncommenting it
 // Ultimaker
-//    #define  DEFAULT_Kp 22.2
-//    #define  DEFAULT_Ki 1.08  
-//    #define  DEFAULT_Kd 114  
+    #define  DEFAULT_Kp 22.2
+    #define  DEFAULT_Ki 1.08  
+    #define  DEFAULT_Kd 114  
 
 // Budaschnozzle
-    #define  DEFAULT_Kp 96.51
-    #define  DEFAULT_Ki 7.40
-    #define  DEFAULT_Kd 314.66
+//    #define  DEFAULT_Kp 96.51
+//    #define  DEFAULT_Ki 7.40
+//    #define  DEFAULT_Kd 314.66
 
 // Makergear
 //    #define  DEFAULT_Kp 7.0
