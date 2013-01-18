@@ -117,10 +117,10 @@
 
 // If you are using a preconfigured hotend then you can use one of the value sets by uncommenting it
 
-// J-Head autotune
-    #define  DEFAULT_Kp 25.90
-    #define  DEFAULT_Ki 1.83 
-    #define  DEFAULT_Kd 91.64   
+// RepRapFab (new) autotune
+    #define  DEFAULT_Kp 20.19
+    #define  DEFAULT_Ki 1.70
+    #define  DEFAULT_Kd 59.87   
 
 // Makergear
 //    #define  DEFAULT_Kp 7.0
