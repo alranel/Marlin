@@ -118,9 +118,14 @@
 // If you are using a preconfigured hotend then you can use one of the value sets by uncommenting it
 
 // RepRapFab (new) autotune
-    #define  DEFAULT_Kp 20.19
-    #define  DEFAULT_Ki 1.70
-    #define  DEFAULT_Kd 59.87   
+    //#define  DEFAULT_Kp 20.19
+    //#define  DEFAULT_Ki 1.70
+    //#define  DEFAULT_Kd 59.87   
+
+// RepRapFab (new) autotune - WITH FAN
+    #define  DEFAULT_Kp 24.14
+    #define  DEFAULT_Ki 2.08
+    #define  DEFAULT_Kd 70.01 
 
 // Makergear
 //    #define  DEFAULT_Kp 7.0
