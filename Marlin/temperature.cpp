@@ -145,20 +145,20 @@ static volatile bool temp_meas_ready = false;
 
 void PID_autotune(float temp, int extruder, int ncycles)
 {
-  float input;
+  float input = 0.0;
   int cycles=0;
   bool heating = true;
 
   unsigned long temp_millis = millis();
   unsigned long t1=temp_millis;
   unsigned long t2=temp_millis;
-  long t_high;
-  long t_low;
+  long t_high = 0;
+  long t_low = 0;
 
   long bias, d;
   float Ku, Tu;
   float Kp, Ki, Kd;
-  float max, min;
+  float max = 0, min = 10000;
 
 	if ((extruder > EXTRUDERS)
   #if (TEMP_BED_PIN <= -1)
@@ -190,6 +190,9 @@ void PID_autotune(float temp, int extruder, int ncycles)
  for(;;) {
 
     if(temp_meas_ready == true) { // temp sample ready
+      //Reset the watchdog after we know we have a temperature measurement.
+      watchdog_reset();
+      
       CRITICAL_SECTION_START;
       temp_meas_ready = false;
       CRITICAL_SECTION_END;
@@ -291,7 +294,7 @@ void PID_autotune(float temp, int extruder, int ncycles)
       SERIAL_PROTOCOLLNPGM("PID Autotune finished ! Place the Kp, Ki and Kd constants in the configuration.h");
       return;
     }
-    LCD_STATUS;
+    lcd_update();
   }
 }
 
@@ -315,16 +318,14 @@ int getHeaterPower(int heater) {
 
 void manage_heater()
 {
-
-  #ifdef USE_WATCHDOG
-    wd_reset();
-  #endif
-  
   float pid_input;
   float pid_output;
 
   if(temp_meas_ready != true)   //better readability
     return; 
+
+  //Reset the watchdog after we know we have a temperature measurement.
+  watchdog_reset();
 
   CRITICAL_SECTION_START;
   temp_meas_ready = false;
@@ -548,7 +549,6 @@ int temp2analogBed(int celsius) {
 #elif defined BED_USES_AD595
     return lround(((celsius-TEMP_SENSOR_AD595_OFFSET)/TEMP_SENSOR_AD595_GAIN) * (1024.0 * OVERSAMPLENR/ (5.0 * 100.0) ) );
 #else
-    #warning No heater-type defined for the bed.
     return 0;
 #endif
 }
@@ -570,7 +570,7 @@ float analog2temp(int raw, uint8_t e) {
     }
   #endif
 
-  if(heater_ttbl_map[e] != 0)
+  if(heater_ttbl_map[e] != NULL)
   {
     float celsius = 0;
     byte i;  
@@ -625,7 +625,6 @@ float analog2tempBed(int raw) {
   #elif defined BED_USES_AD595
     return ((raw * ((5.0 * 100.0) / 1024.0) / OVERSAMPLENR) * TEMP_SENSOR_AD595_GAIN) + TEMP_SENSOR_AD595_OFFSET;
   #else
-    #warning No heater-type defined for the bed.
     return 0;
   #endif
 }
@@ -910,9 +909,15 @@ ISR(TIMER0_COMPB_vect)
   static unsigned char temp_state = 0;
   static unsigned char pwm_count = 1;
   static unsigned char soft_pwm_0;
+  #if EXTRUDERS > 1
   static unsigned char soft_pwm_1;
+  #endif
+  #if EXTRUDERS > 2
   static unsigned char soft_pwm_2;
+  #endif
+  #if HEATER_BED_PIN > -1
   static unsigned char soft_pwm_b;
+  #endif
   
   if(pwm_count == 0){
     soft_pwm_0 = soft_pwm[0];
@@ -955,9 +960,7 @@ ISR(TIMER0_COMPB_vect)
         ADMUX = ((1 << REFS0) | (TEMP_0_PIN & 0x07));
         ADCSRA |= 1<<ADSC; // Start conversion
       #endif
-      #ifdef ULTIPANEL
-        buttons_check();
-      #endif
+      lcd_buttons_update();
       temp_state = 1;
       break;
     case 1: // Measure TEMP_0
@@ -979,9 +982,7 @@ ISR(TIMER0_COMPB_vect)
         ADMUX = ((1 << REFS0) | (TEMP_BED_PIN & 0x07));
         ADCSRA |= 1<<ADSC; // Start conversion
       #endif
-      #ifdef ULTIPANEL
-        buttons_check();
-      #endif
+      lcd_buttons_update();
       temp_state = 3;
       break;
     case 3: // Measure TEMP_BED
@@ -1000,9 +1001,7 @@ ISR(TIMER0_COMPB_vect)
         ADMUX = ((1 << REFS0) | (TEMP_1_PIN & 0x07));
         ADCSRA |= 1<<ADSC; // Start conversion
       #endif
-      #ifdef ULTIPANEL
-        buttons_check();
-      #endif
+      lcd_buttons_update();
       temp_state = 5;
       break;
     case 5: // Measure TEMP_1
@@ -1021,9 +1020,7 @@ ISR(TIMER0_COMPB_vect)
         ADMUX = ((1 << REFS0) | (TEMP_2_PIN & 0x07));
         ADCSRA |= 1<<ADSC; // Start conversion
       #endif
-      #ifdef ULTIPANEL
-        buttons_check();
-      #endif
+      lcd_buttons_update();
       temp_state = 7;
       break;
     case 7: // Measure TEMP_2

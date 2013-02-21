@@ -173,23 +173,37 @@
 // if unwanted behavior is observed on a user's machine when running at very slow speeds.
 #define MINIMUM_PLANNER_SPEED 0.05// (mm/sec)
 
+// MS1 MS2 Stepper Driver Microstepping mode table
+#define MICROSTEP1 LOW,LOW
+#define MICROSTEP2 HIGH,LOW
+#define MICROSTEP4 LOW,HIGH
+#define MICROSTEP8 HIGH,HIGH
+#define MICROSTEP16 HIGH,HIGH
+
+// Microstep setting (Only functional when stepper driver microstep pins are connected to MCU.
+#define MICROSTEP_MODES {16,16,16,16,16} // [1,2,4,8,16]
+
+// Motor Current setting (Only functional when motor driver current ref pins are connected to a digital trimpot on supported boards)
+#define DIGIPOT_MOTOR_CURRENT {135,135,135,135,135} // Values 0-255 (RAMBO 135 = ~0.75A, 185 = ~1A)
+
+
 //===========================================================================
 //=============================Additional Features===========================
 //===========================================================================
 
 
 #define SD_FINISHED_STEPPERRELEASE true  //if sd support and the file is finished: disable steppers?
-#define SD_FINISHED_RELEASECOMMAND "M84 X Y Z E" // no z because of layer shift.
+#define SD_FINISHED_RELEASECOMMAND "M84 X Y Z E" // You might want to keep the z enabled so your bed stays in place.
 
-// The hardware watchdog should halt the Microcontroller, in case the firmware gets stuck somewhere. However:
-// the Watchdog is not working well, so please only enable this for testing
-// this enables the watchdog interrupt.
+// The hardware watchdog should reset the Microcontroller disabling all outputs, in case the firmware gets stuck and doesn't do temperature regulation.
 //#define USE_WATCHDOG
-//#ifdef USE_WATCHDOG
-  // you cannot reboot on a mega2560 due to a bug in he bootloader. Hence, you have to reset manually, and this is done hereby:
-//#define RESET_MANUAL
-//#define WATCHDOG_TIMEOUT 4  //seconds
-//#endif
+
+#ifdef USE_WATCHDOG
+// If you have a watchdog reboot in an ArduinoMega2560 then the device will hang forever, as a watchdog reset will leave the watchdog on.
+// The "WATCHDOG_RESET_MANUAL" goes around this by not using the hardware reset.
+//  However, THIS FEATURE IS UNSAFE!, as it will only work if interrupts are disabled. And the code could hang in an interrupt routine with interrupts disabled.
+//#define WATCHDOG_RESET_MANUAL
+#endif
 
 // extruder advance constant (s2/mm3)
 //
@@ -214,7 +228,7 @@
 #define MM_PER_ARC_SEGMENT 1
 #define N_ARC_CORRECTION 25
 
-const int dropsegments=5; //everything with less than this number of steps will be ignored as move and joined with the next movement
+const unsigned int dropsegments=5; //everything with less than this number of steps will be ignored as move and joined with the next movement
 
 // If you are using a RAMPS board or cheap E-bay purchased boards that do not detect when an SD card is inserted
 // You can get round this by connecting a push button or single throw switch to the pin defined as SDCARDCARDDETECT 

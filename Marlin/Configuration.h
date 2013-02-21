@@ -5,32 +5,43 @@
 // Advanced settings can be found in Configuration_adv.h 
 // BASIC SETTINGS: select your board type, temperature sensor type, axis scaling, and endstop configuration
 
-//User specified version info of THIS file to display in [Pronterface, etc] terminal window during startup.
+//User specified version info of this build to display in [Pronterface, etc] terminal window during startup.
 //Implementation of an idea by Prof Braino to inform user that any changes made
-//to THIS file by the user have been successfully uploaded into firmware.
-#define STRING_VERSION_CONFIG_H "2012-12-04" //Personal revision number for changes to THIS file.
+//to this build by the user have been successfully uploaded into firmware.
+#define STRING_VERSION_CONFIG_H __DATE__ " " __TIME__ // build date and time
 #define STRING_CONFIG_H_AUTHOR "Al" //Who made the changes.
+
+// SERIAL_PORT selects which serial port should be used for communication with the host.
+// This allows the connection of wireless adapters (for instance) to non-default port pins.
+// Serial port 0 is still used by the Arduino bootloader regardless of this setting.
+#define SERIAL_PORT 0
 
 // This determines the communication speed of the printer
 #define BAUDRATE 250000
 //#define BAUDRATE 115200
 
 //// The following define selects which electronics board you have. Please choose the one that matches your setup
-// Gen7 custom (Alfons3 Version) = 10 "https://github.com/Alfons3/Generation_7_Electronics"
-// Gen7 v1.1, v1.2 = 11
-// Gen7 v1.3 = 12
-// Gen7 v1.4 = 13
-// MEGA/RAMPS up to 1.2 = 3
-// RAMPS 1.3 = 33 (Power outputs: Extruder, Bed, Fan)
-// RAMPS 1.3 = 34 (Power outputs: Extruder0, Extruder1, Bed)
-// Gen6 = 5
-// Gen6 deluxe = 51
-// Sanguinololu 1.2 and above = 62
-// Melzi = 63
-// Ultimaker = 7
-// Teensylu = 8
-// Gen3+ =9
-// Megatronics =70
+// 10 = Gen7 custom (Alfons3 Version) "https://github.com/Alfons3/Generation_7_Electronics"
+// 11 = Gen7 v1.1, v1.2 = 11
+// 12 = Gen7 v1.3
+// 13 = Gen7 v1.4
+// 3  = MEGA/RAMPS up to 1.2 = 3
+// 33 = RAMPS 1.3 (Power outputs: Extruder, Bed, Fan)
+// 34 = RAMPS 1.3 (Power outputs: Extruder0, Extruder1, Bed)
+// 4  = Duemilanove w/ ATMega328P pin assignment
+// 5  = Gen6
+// 51 = Gen6 deluxe
+// 6  = Sanguinololu < 1.2
+// 62 = Sanguinololu 1.2 and above
+// 63 = Melzi
+// 7  = Ultimaker
+// 71 = Ultimaker (Older electronics. Pre 1.5.4. This is rare)
+// 8  = Teensylu
+// 9  = Gen3+
+// 70 = Megatronics
+// 90 = Alpha OMCA board
+// 91 = Final OMCA board
+// Rambo = 301
 
 #ifndef MOTHERBOARD
 #define MOTHERBOARD 33
@@ -96,7 +107,7 @@
 // PID settings:
 // Comment the following line to disable PID and enable bang-bang.
 #define PIDTEMP
-#define PID_MAX 255 // limits current to nozzle; 255=full current
+#define PID_MAX 64 // limits current to nozzle; 255=full current
 #ifdef PIDTEMP
   //#define PID_DEBUG // Sends debug data to the serial port. 
   //#define PID_OPENLOOP 1 // Puts PID in open loop. M104/M140 sets the output power from 0 to PID_MAX
@@ -108,12 +119,12 @@
 // Ultimaker
 //    #define  DEFAULT_Kp 22.2
 //    #define  DEFAULT_Ki 1.08  
-    #define  DEFAULT_Kd 114  
+//    #define  DEFAULT_Kd 114  
 //
 // Makergear
-    #define  DEFAULT_Kp 7.0
-    #define  DEFAULT_Ki 0.1  
-    #define  DEFAULT_Kd 12  
+    #define  DEFAULT_Kp 10.69
+    #define  DEFAULT_Ki 0.62
+    #define  DEFAULT_Kd 45.87
 
 // Mendel Parts V9 on 12V    
 //    #define  DEFAULT_Kp 63.0
@@ -199,7 +210,7 @@
 
 // The pullups are needed if you directly connect a mechanical endswitch between the signal and ground pins.
 const bool X_ENDSTOPS_INVERTING = true; // set to true to invert the logic of the endstops. 
-const bool Y_ENDSTOPS_INVERTING = true; // set to true to invert the logic of the endstops. 
+const bool Y_ENDSTOPS_INVERTING = false; // set to true to invert the logic of the endstops. 
 const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of the endstops. 
 //#define DISABLE_MAX_ENDSTOPS
 
@@ -231,9 +242,9 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define min_software_endstops true //If true, axis won't move to coordinates less than HOME_POS.
 #define max_software_endstops true  //If true, axis won't move to coordinates greater than the defined lengths below.
 // Travel limits after homing
-#define X_MAX_POS 200
+#define X_MAX_POS 236
 #define X_MIN_POS 0
-#define Y_MAX_POS 205
+#define Y_MAX_POS 250
 #define Y_MIN_POS 0
 #define Z_MAX_POS 160
 #define Z_MIN_POS 0
@@ -257,9 +268,9 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 
 // default settings 
 
-#define DEFAULT_AXIS_STEPS_PER_UNIT   {80,80,2560,700}  // default steps per unit for ultimaker 
+#define DEFAULT_AXIS_STEPS_PER_UNIT   {160,160,5120,1400}  // default steps per unit for ultimaker 
 #define DEFAULT_MAX_FEEDRATE          {500, 500, 5, 45}    // (mm/sec)    
-#define DEFAULT_MAX_ACCELERATION      {3000,2000,100,10000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for skeinforge 40+, for older versions raise them a lot.
+#define DEFAULT_MAX_ACCELERATION      {9000,9000,100,10000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for skeinforge 40+, for older versions raise them a lot.
 
 #define DEFAULT_ACCELERATION          3000    // X, Y, Z and E max acceleration in mm/s^2 for printing moves 
 #define DEFAULT_RETRACT_ACCELERATION  3000   // X, Y, Z and E max acceleration in mm/s^2 for r retracts
@@ -291,12 +302,26 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 //#define ULTIMAKERCONTROLLER //as available from the ultimaker online store.
 #define ULTIPANEL  //the ultipanel as on thingiverse
 
+// The RepRapDiscount Smart Controller
+// http://reprap.org/wiki/RepRapDiscount_Smart_Controller
+//#define REPRAP_DISCOUNT_SMART_CONTROLLER
 
-#ifdef ULTIMAKERCONTROLLER    //automatic expansion
+
+//automatic expansion
+#if defined(ULTIMAKERCONTROLLER) || defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
  #define ULTIPANEL
  #define NEWPANEL
 #endif 
- 
+
+// Preheat Constants
+#define PLA_PREHEAT_HOTEND_TEMP 180 
+#define PLA_PREHEAT_HPB_TEMP 70
+#define PLA_PREHEAT_FAN_SPEED 0		// Insert Value between 0 and 255
+
+#define ABS_PREHEAT_HOTEND_TEMP 240
+#define ABS_PREHEAT_HPB_TEMP 100
+#define ABS_PREHEAT_FAN_SPEED 0		// Insert Value between 0 and 255
+
 
 #ifdef ULTIPANEL
   #define NEWPANEL  //enable this if you have a click-encoder panel
@@ -305,15 +330,6 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
   #define LCD_WIDTH 20
   #define LCD_HEIGHT 4
   
-// Preheat Constants
-  #define PLA_PREHEAT_HOTEND_TEMP 180 
-  #define PLA_PREHEAT_HPB_TEMP 70
-  #define PLA_PREHEAT_FAN_SPEED 0		// Insert Value between 0 and 255
-
-  #define ABS_PREHEAT_HOTEND_TEMP 240
-  #define ABS_PREHEAT_HPB_TEMP 100
-  #define ABS_PREHEAT_FAN_SPEED 0		// Insert Value between 0 and 255
-
 #else //no panel but just lcd 
   #ifdef ULTRA_LCD
     #define LCD_WIDTH 16
