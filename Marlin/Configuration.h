@@ -48,7 +48,7 @@
 #endif
 
 // Define this to set a custom name for your generic Mendel,
-// #define CUSTOM_MENDEL_NAME "This Mendel"
+#define CUSTOM_MENDEL_NAME "Mini TAZ"
 
 // Define this to set a unique identifier for this printer, (Used by some programs to differentiate between machines)
 // You can use an online service to generate a random UUID. (eg http://www.uuidgenerator.net/version4)
@@ -334,8 +334,8 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 #define max_software_endstops true  // If true, axis won't move to coordinates greater than the defined lengths below.
 
 // Travel limits after homing
-#define X_MAX_POS 173
-#define X_MIN_POS 0
+#define X_MAX_POS 146
+#define X_MIN_POS 9
 #define Y_MAX_POS 170
 #define Y_MIN_POS 0
 #define Z_MAX_POS 155
@@ -371,9 +371,9 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
   #ifdef AUTO_BED_LEVELING_GRID
 
     // set the rectangle in which to probe
-    #define LEFT_PROBE_BED_POSITION 18
-    #define RIGHT_PROBE_BED_POSITION 173
-    #define BACK_PROBE_BED_POSITION 157
+    #define LEFT_PROBE_BED_POSITION 34
+    #define RIGHT_PROBE_BED_POSITION (34+147)
+    #define BACK_PROBE_BED_POSITION 145
     #define FRONT_PROBE_BED_POSITION 0
 
      // set the number of grid points per dimension
@@ -399,15 +399,15 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
   // X and Y offsets must be integers
   #define X_PROBE_OFFSET_FROM_EXTRUDER 0
   #define Y_PROBE_OFFSET_FROM_EXTRUDER 0
-  #define Z_PROBE_OFFSET_FROM_EXTRUDER -4
+  #define Z_PROBE_OFFSET_FROM_EXTRUDER -5.5
 
   #define Z_RAISE_BEFORE_HOMING 15       // (in mm) Raise Z before homing (G28) for Probe Clearance.
                                         // Be sure you have this distance over your Z_MAX_POS in case
 
   #define XY_TRAVEL_SPEED 8000         // X and Y axis travel speed between probes, in mm/min
 
-  #define Z_RAISE_BEFORE_PROBING 15    //How much the extruder will be raised before traveling to the first probing point.
-  #define Z_RAISE_BETWEEN_PROBINGS 15  //How much the extruder will be raised when traveling from between next probing points
+  #define Z_RAISE_BEFORE_PROBING 10    //How much the extruder will be raised before traveling to the first probing point.
+  #define Z_RAISE_BETWEEN_PROBINGS 5  //How much the extruder will be raised when traveling from between next probing points
 
   //#define Z_PROBE_SLED // turn on if you have a z-probe mounted on a sled like those designed by Charles Bell
   //#define SLED_DOCKING_OFFSET 5 // the extra distance the X axis must travel to pickup the sled. 0 should be fine but you can push it further if you'd like.
@@ -431,7 +431,7 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 
   #ifdef Z_SAFE_HOMING
 
-    #define Z_SAFE_HOMING_X_POINT 18    // X point for Z homing when homing all axis (G28)
+    #define Z_SAFE_HOMING_X_POINT 34    // X point for Z homing when homing all axis (G28)
     #define Z_SAFE_HOMING_Y_POINT 0    // Y point for Z homing when homing all axis (G28)
 
   #endif
